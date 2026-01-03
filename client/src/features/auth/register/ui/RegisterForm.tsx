@@ -97,7 +97,7 @@ export const RegisterForm = () => {
           Bạn đã có tài khoản?{" "}
           <Link
             href="/login"
-            className="font-medium text-[#1e5b98] hover:underline"
+            className="text-primary font-medium hover:underline"
           >
             Đăng nhập
           </Link>
