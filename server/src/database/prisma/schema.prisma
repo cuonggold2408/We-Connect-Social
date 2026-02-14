@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+  moduleFormat = "cjs"
+  previewFeatures = ["strictUndefinedChecks","relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql" 
+}
+
+enum UserGender {
+  MALE
+  FEMALE
+  OTHER
+
+  @@map("user_gender")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  DELETED
+
+  @@map("user_status")
+}
+
+model User {
+  id String @id @default(uuid(7)) @db.Uuid
+  username String @unique @db.VarChar(20)
+  email    String @unique @db.VarChar(50)
+  password String @db.VarChar(100)
+
+  fullname  String? @db.VarChar(40)
+  avatarUrl String? @map("avatar_url") @db.VarChar(255)
+  bio       String? @db.VarChar(150)
+  gender    UserGender?
+  birthday  DateTime? @db.Date
+  address   String? @db.VarChar(255)
+
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  isVerifiedBadge Boolean   @default(false) @map("is_verified_badge")
+  status          UserStatus   @default(ACTIVE)
+
+  lastActiveAt DateTime @default(now()) @map("last_active_at") @db.Timestamptz(6)
+
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
+
+  @@map("users")
+  @@index([searchVector], type: Gin, map: "idx_users_search")
+}
