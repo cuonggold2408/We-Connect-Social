@@ -50,6 +50,21 @@ model User {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
 
+  verificationTokens EmailVerificationToken[]
+
   @@map("users")
   @@index([searchVector], type: Gin, map: "idx_users_search")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  token     String    @unique @db.VarChar(500)
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@index([token])
+  @@index([userId])
+  @@map("email_verification_tokens")
 }

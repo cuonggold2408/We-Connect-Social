@@ -33,6 +33,9 @@ export class UserResponseDto {
   status: UserStatus;
 
   @Expose()
+  emailVerifiedAt: Date | null;
+
+  @Expose()
   createdAt: Date;
 
   constructor(partial: Partial<UserResponseDto>) {
