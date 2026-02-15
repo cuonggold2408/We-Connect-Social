@@ -43,7 +43,7 @@ model User {
   isVerifiedBadge Boolean   @default(false) @map("is_verified_badge")
   status          UserStatus   @default(ACTIVE)
 
-  lastActiveAt DateTime @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  lastActiveAt DateTime? @map("last_active_at") @db.Timestamptz(6)
 
   searchVector Unsupported("tsvector")? @map("search_vector")
 

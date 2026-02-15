@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
   UnprocessableEntityException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -76,17 +77,18 @@ export class AuthService {
     });
 
     return {
-      message:
-        'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+      message: 'Vui lòng kiểm tra email để xác thực tài khoản.',
     };
   }
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     let payload: VerificationTokenPayload;
     try {
-      payload = this.jwtService.verify<VerificationTokenPayload>(token);
+      payload = this.jwtService.verify<VerificationTokenPayload>(token, {
+        ignoreExpiration: true,
+      });
     } catch {
-      throw new BadRequestException('Token không hợp lệ hoặc đã hết hạn');
+      throw new BadRequestException('Token không hợp lệ');
     }
 
     if (payload.type !== 'email_verification') {
@@ -101,11 +103,8 @@ export class AuthService {
       throw new BadRequestException('Token không tồn tại');
     }
 
-    if (tokenRecord.usedAt) {
-      throw new BadRequestException('Token đã được sử dụng');
-    }
     if (new Date() > tokenRecord.expiresAt) {
-      throw new BadRequestException('Token đã hết hạn');
+      throw new UnauthorizedException('Token đã hết hạn');
     }
 
     if (tokenRecord.user.emailVerifiedAt) {
@@ -131,9 +130,7 @@ export class AuthService {
   async resendVerification(email: string): Promise<{ message: string }> {
     const user = await this.authRepository.findByEmail(email);
     if (!user) {
-      return {
-        message: 'Nếu email tồn tại, chúng tôi đã gửi lại link xác thực.',
-      };
+      throw new BadRequestException('Email không tồn tại');
     }
 
     if (user.emailVerifiedAt) {
@@ -162,7 +159,7 @@ export class AuthService {
     );
 
     return {
-      message: 'Nếu email tồn tại, chúng tôi đã gửi lại link xác thực.',
+      message: 'Chúng tôi đã gửi lại link xác thực. Vui lòng kiểm tra email.',
     };
   }
 
@@ -176,7 +173,6 @@ export class AuthService {
       'JWT_VERIFICATION_EXPIRES_IN',
     );
 
-    // 1. Tạo JWT token
     const payload: VerificationTokenPayload = {
       sub: userId,
       email,
@@ -187,11 +183,9 @@ export class AuthService {
       expiresIn: expiresIn as StringValue,
     });
 
-    // 2. Tính expiresAt để lưu DB
     const decoded = this.jwtService.decode<{ exp: number }>(token);
     const expiresAt = new Date(decoded.exp * 1000);
 
-    // 3. Lưu token vào DB
     await tx.emailVerificationToken.create({
       data: {
         token,
@@ -200,11 +194,9 @@ export class AuthService {
       },
     });
 
-    // 4. Tạo verification URL
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
     const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
 
-    // 5. Gửi email
     await this.mailService.sendVerificationEmail(
       email,
       username,
