@@ -15,8 +15,14 @@ import {
 import { Input } from "@/shared/components/ui/input"; // Import từ shadcn
 import { PasswordChecklist } from "./PasswordChecklist";
 import Link from "next/link";
+import { useMutation } from "@tanstack/react-query";
+import { authApi } from "@/shared/api/auth.api";
 
-export const RegisterForm = () => {
+interface RegisterFormProps {
+  onSuccess?: () => void;
+}
+
+export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -26,14 +32,36 @@ export const RegisterForm = () => {
     },
   });
 
+  const registerMutation = useMutation({
+    mutationFn: authApi.register,
+    onSuccess: () => onSuccess?.(),
+  });
+
   const onSubmit = (data: RegisterValues) => {
-    console.log("Form Data Submitted:", data);
-    // TODO: Gọi API đăng ký
+    registerMutation.mutate(data);
   };
+
+  if (registerMutation.isSuccess) {
+    return (
+      <div className="rounded-lg bg-green-50 p-6 text-center">
+        <p className="text-lg font-semibold text-green-700">
+          Đăng ký thành công! 🎉
+        </p>
+        <p className="mt-2 text-sm text-green-600">
+          {registerMutation.data.message}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {registerMutation.isError && (
+          <div className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
+            {registerMutation.error.message}
+          </div>
+        )}
         <FormField
           control={form.control}
           name="username"
@@ -87,8 +115,9 @@ export const RegisterForm = () => {
         <Button
           type="submit"
           className="bg-blue-primary hover:bg-blue-secondary w-full cursor-pointer"
+          disabled={registerMutation.isPending}
         >
-          Đăng ký
+          {registerMutation.isPending ? "Đang xử lý..." : "Đăng ký"}
         </Button>
       </form>
 
