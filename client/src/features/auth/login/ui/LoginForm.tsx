@@ -1,8 +1,10 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterValues, registerSchema } from "../model/register.schema";
+import {
+  loginSchema,
+  LoginValues,
+} from "@/features/auth/login/model/login.schema";
+import { authApi } from "@/shared/api/auth.api";
 import { Button } from "@/shared/components/ui/button";
 import {
   Form,
@@ -13,69 +15,41 @@ import {
   FormMessage,
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { PasswordChecklist } from "./PasswordChecklist";
-import Link from "next/link";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { authApi } from "@/shared/api/auth.api";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 
-interface RegisterFormProps {
-  onSuccess?: () => void;
-}
-
-export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
-  const form = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
+const LoginForm = () => {
+  const router = useRouter();
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
       email: "",
       password: "",
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: authApi.register,
-    onSuccess: () => onSuccess?.(),
+  const loginMutation = useMutation({
+    mutationFn: authApi.login,
+    onSuccess: () => {
+      router.push("/");
+    },
   });
 
-  const onSubmit = (data: RegisterValues) => {
-    registerMutation.mutate(data);
+  const onSubmit = (data: LoginValues) => {
+    loginMutation.mutate(data);
   };
-
-  if (registerMutation.isSuccess) {
-    return (
-      <div className="rounded-lg bg-green-50 p-6 text-center">
-        <p className="text-lg font-semibold text-green-700">
-          Đăng ký thành công! 🎉
-        </p>
-        <p className="mt-2 text-sm text-green-600">
-          {registerMutation.data.message}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {registerMutation.isError && (
+        {loginMutation.isError && (
           <div className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
-            {registerMutation.error.message}
+            {loginMutation.error.message}
           </div>
         )}
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tên</FormLabel>
-              <FormControl>
-                <Input placeholder="john.doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={form.control}
           name="email"
@@ -107,7 +81,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
                   {...field}
                 />
               </FormControl>
-              <PasswordChecklist password={field.value || ""} />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -115,23 +89,25 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         <Button
           type="submit"
           className="bg-blue-primary hover:bg-blue-secondary w-full cursor-pointer"
-          disabled={registerMutation.isPending}
+          disabled={loginMutation.isPending}
         >
-          {registerMutation.isPending ? "Đang xử lý..." : "Đăng ký"}
+          {loginMutation.isPending ? "Đang xử lý..." : "Đăng nhập"}
         </Button>
       </form>
 
       <div className="mt-4 text-center">
         <p className="mb-4 text-sm text-gray-500">
-          Bạn đã có tài khoản?{" "}
+          Bạn chưa có tài khoản?{" "}
           <Link
-            href="/login"
+            href="/register"
             className="text-primary font-medium hover:underline"
           >
-            Đăng nhập
+            Đăng ký
           </Link>
         </p>
       </div>
     </Form>
   );
 };
+
+export default LoginForm;

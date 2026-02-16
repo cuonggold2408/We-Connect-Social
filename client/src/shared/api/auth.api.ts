@@ -12,7 +12,17 @@ interface RegisterPayload {
   password: string;
 }
 
+interface LoginPayload {
+  email: string;
+  password: string;
+}
+
 export const authApi = {
+  login: async (payload: LoginPayload): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>("/auth/login", payload);
+    return data;
+  },
+
   register: async (payload: RegisterPayload): Promise<ApiResponse> => {
     const { data } = await api.post<ApiResponse>("/auth/register", payload);
     return data;
