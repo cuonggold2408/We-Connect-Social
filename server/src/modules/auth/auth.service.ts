@@ -15,11 +15,20 @@ import { PrismaService } from '@shared/prisma/prisma.service';
 import { MailService } from '@shared/mail/mail.service';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
 import { AuthRepository } from '@/modules/auth/auth.repository';
+import { LoginDto } from '@/modules/auth/dto/login.dto';
+import express from 'express';
+import { generateRefreshToken, hashToken } from '@/shared/utils/generate-token';
+import { parseExpiresInToMs } from '@/shared/utils/format-time';
+import { getCookieConfig } from '@/shared/config/cookie.config';
 
 interface VerificationTokenPayload {
   sub: string;
   email: string;
   type: 'email_verification';
+}
+
+interface AccessTokenPayload {
+  sub: string;
 }
 
 @Injectable()
@@ -37,11 +46,60 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
+  private async comparePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
+  }
+
   private async hashPassword(password: string): Promise<string> {
     const saltRounds = 10;
     const salt = await bcrypt.genSalt(saltRounds);
     const hashedPassword = await bcrypt.hash(password, salt);
     return hashedPassword;
+  }
+
+  private async createAndSendVerification(
+    tx: any,
+    userId: string,
+    email: string,
+    username: string,
+  ): Promise<void> {
+    const expiresIn = this.configService.getOrThrow<string>(
+      'JWT_VERIFICATION_EXPIRES_IN',
+    );
+
+    const payload: VerificationTokenPayload = {
+      sub: userId,
+      email,
+      type: 'email_verification',
+    };
+
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_VERIFICATION_SECRET'),
+      expiresIn: expiresIn as StringValue,
+    });
+
+    const decoded = this.jwtService.decode<{ exp: number }>(token);
+    const expiresAt = new Date(decoded.exp * 1000);
+
+    await tx.emailVerificationToken.create({
+      data: {
+        token,
+        userId,
+        expiresAt,
+      },
+    });
+
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+
+    await this.mailService.sendVerificationEmail(
+      email,
+      username,
+      verificationUrl,
+    );
   }
 
   async register(dto: RegisterDto): Promise<{ message: string }> {
@@ -85,6 +143,9 @@ export class AuthService {
     let payload: VerificationTokenPayload;
     try {
       payload = this.jwtService.verify<VerificationTokenPayload>(token, {
+        secret: this.configService.getOrThrow<string>(
+          'JWT_VERIFICATION_SECRET',
+        ),
         ignoreExpiration: true,
       });
     } catch {
@@ -163,44 +224,89 @@ export class AuthService {
     };
   }
 
-  private async createAndSendVerification(
-    tx: any,
-    userId: string,
-    email: string,
-    username: string,
-  ): Promise<void> {
-    const expiresIn = this.configService.getOrThrow<string>(
-      'JWT_VERIFICATION_EXPIRES_IN',
-    );
+  async login(
+    dto: LoginDto,
+    res: express.Response,
+    ipAddress?: string,
+    deviceInfo?: string,
+  ): Promise<{ message: string; user: object }> {
+    const user = await this.authRepository.findByEmail(dto.email);
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại');
+    }
 
-    const payload: VerificationTokenPayload = {
-      sub: userId,
-      email,
-      type: 'email_verification',
+    if (!user.emailVerifiedAt) {
+      throw new BadRequestException(
+        'Vui lòng xác thực email trước khi đăng nhập',
+      );
+    }
+
+    const isPasswordValid = await this.comparePassword(
+      dto.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new BadRequestException('Email hoặc mật khẩu không chính xác');
+    }
+
+    const payload: AccessTokenPayload = {
+      sub: user.id,
     };
 
-    const token = this.jwtService.sign(payload, {
-      expiresIn: expiresIn as StringValue,
-    });
-
-    const decoded = this.jwtService.decode<{ exp: number }>(token);
-    const expiresAt = new Date(decoded.exp * 1000);
-
-    await tx.emailVerificationToken.create({
-      data: {
-        token,
-        userId,
-        expiresAt,
-      },
-    });
-
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
-
-    await this.mailService.sendVerificationEmail(
-      email,
-      username,
-      verificationUrl,
+    const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
+      'JWT_ACCESS_EXPIRES_IN',
     );
+
+    const parseTimeAccessTokenExpiresIn =
+      parseExpiresInToMs(accessTokenExpiresIn);
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: accessTokenExpiresIn,
+    });
+
+    const refreshToken = generateRefreshToken();
+    const hashedRefreshToken = hashToken(refreshToken);
+
+    const refreshExpireDays = this.configService.getOrThrow<number>(
+      'REFRESH_TOKEN_EXPIRES_DAYS',
+    );
+    const parseTimeRefreshTokenExpiresIn =
+      refreshExpireDays * 24 * 60 * 60 * 1000;
+    const refreshExpiresAt = new Date(
+      Date.now() + parseTimeRefreshTokenExpiresIn,
+    );
+
+    await this.authRepository.createRefreshToken({
+      userId: user.id,
+      refreshToken: hashedRefreshToken,
+      expiresAt: refreshExpiresAt,
+      deviceInfo,
+      ipAddress,
+    });
+
+    res.cookie(
+      'access_token',
+      accessToken,
+      getCookieConfig(parseTimeAccessTokenExpiresIn),
+    );
+
+    res.cookie(
+      'refresh_token',
+      refreshToken,
+      getCookieConfig(parseTimeRefreshTokenExpiresIn),
+    );
+
+    return {
+      message: 'Đăng nhập thành công',
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        status: user.status,
+        emailVerifiedAt: user.emailVerifiedAt,
+      },
+    };
   }
 }

@@ -28,11 +28,11 @@ enum UserStatus {
 
 model User {
   id String @id @default(uuid(7)) @db.Uuid
-  username String @unique @db.VarChar(20)
+  username String  @unique @db.VarChar(20)
   email    String @unique @db.VarChar(50)
   password String @db.VarChar(100)
 
-  fullname  String? @db.VarChar(40)
+  fullname  String?  @db.VarChar(40)
   avatarUrl String? @map("avatar_url") @db.VarChar(255)
   bio       String? @db.VarChar(150)
   gender    UserGender?
@@ -52,6 +52,8 @@ model User {
 
   verificationTokens EmailVerificationToken[]
 
+  accessUsers AccessUser[]
+
   @@map("users")
   @@index([searchVector], type: Gin, map: "idx_users_search")
 }
@@ -64,7 +66,24 @@ model EmailVerificationToken {
   expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
   usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
   @@index([token])
   @@index([userId])
   @@map("email_verification_tokens")
+}
+
+model AccessUser {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  refreshToken      String @map("refresh_token")    @unique @db.VarChar(255)
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo String?   @map("device_info") @db.VarChar(150)
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@map("access_users")
 }

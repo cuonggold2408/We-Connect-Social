@@ -1,3 +1,4 @@
+import { formatDurationVN } from '@/shared/utils/format-time';
 import {
   Body,
   Button,
@@ -11,6 +12,9 @@ import {
   Text,
 } from '@react-email/components';
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 interface VerificationEmailTemplateProps {
   username: string;
   verificationUrl: string;
@@ -19,59 +23,64 @@ interface VerificationEmailTemplateProps {
 export const VerificationEmailTemplate = ({
   username,
   verificationUrl,
-}: VerificationEmailTemplateProps) => (
-  <Html>
-    <Head />
-    <Preview>Xác thực tài khoản We Connect của bạn</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        {/* Header */}
-        <Section style={header}>
-          <Heading style={headerTitle}>We Connect</Heading>
-        </Section>
+}: VerificationEmailTemplateProps) => {
+  const TIME_EXPIRES = process.env.JWT_VERIFICATION_EXPIRES_IN;
 
-        {/* Body */}
-        <Section style={content}>
-          <Heading as="h2" style={greeting}>
-            Xin chào {username} 👋
-          </Heading>
-          <Text style={paragraph}>
-            Cảm ơn bạn đã đăng ký tài khoản. Hãy nhấn nút bên dưới để xác thực
-            email của bạn.
-          </Text>
-
-          <Section style={buttonContainer}>
-            <Button style={button} href={verificationUrl}>
-              Xác thực Email
-            </Button>
+  return (
+    <Html>
+      <Head />
+      <Preview>Xác thực tài khoản We Connect của bạn</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          {/* Header */}
+          <Section style={header}>
+            <Heading style={headerTitle}>We Connect</Heading>
           </Section>
 
-          <Text style={note}>
-            Link xác thực sẽ hết hạn sau <strong>15 phút</strong>. Nếu bạn không
-            đăng ký tài khoản này, vui lòng bỏ qua email này.
-          </Text>
-
-          {/* Fallback link */}
-          <Section style={fallbackBox}>
-            <Text style={fallbackLabel}>
-              Nếu nút không hoạt động, copy link sau:
+          {/* Body */}
+          <Section style={content}>
+            <Heading as="h2" style={greeting}>
+              Xin chào {username} 👋
+            </Heading>
+            <Text style={paragraph}>
+              Cảm ơn bạn đã đăng ký tài khoản. Hãy nhấn nút bên dưới để xác thực
+              email của bạn.
             </Text>
-            <Text style={fallbackLink}>{verificationUrl}</Text>
-          </Section>
-        </Section>
 
-        {/* Footer */}
-        <Hr style={hr} />
-        <Section style={footer}>
-          <Text style={footerText}>
-            © 2026 We Connect. Email này được gửi tự động, vui lòng không phản
-            hồi.
-          </Text>
-        </Section>
-      </Container>
-    </Body>
-  </Html>
-);
+            <Section style={buttonContainer}>
+              <Button style={button} href={verificationUrl}>
+                Xác thực Email
+              </Button>
+            </Section>
+
+            <Text style={note}>
+              Link xác thực sẽ hết hạn sau{' '}
+              <strong>{formatDurationVN(TIME_EXPIRES as string)}</strong>. Nếu
+              bạn không đăng ký tài khoản này, vui lòng bỏ qua email này.
+            </Text>
+
+            {/* Fallback link */}
+            <Section style={fallbackBox}>
+              <Text style={fallbackLabel}>
+                Nếu nút không hoạt động, copy link sau:
+              </Text>
+              <Text style={fallbackLink}>{verificationUrl}</Text>
+            </Section>
+          </Section>
+
+          {/* Footer */}
+          <Hr style={hr} />
+          <Section style={footer}>
+            <Text style={footerText}>
+              © 2026 We Connect. Email này được gửi tự động, vui lòng không phản
+              hồi.
+            </Text>
+          </Section>
+        </Container>
+      </Body>
+    </Html>
+  );
+};
 
 const main: React.CSSProperties = {
   backgroundColor: '#f4f7fa',

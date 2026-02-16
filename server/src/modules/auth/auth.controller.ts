@@ -6,14 +6,30 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Res,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from '@/modules/auth/auth.service';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
 import { ResendVerificationDto } from '@/modules/auth/dto/resend-verification.dto';
+import { LoginDto } from '@/modules/auth/dto/login.dto';
+import express from 'express';
+import { extractClientInfo } from '@/shared/utils/extract-client-info';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() data: LoginDto,
+    @Res({ passthrough: true }) res: express.Response,
+    @Req() req: express.Request,
+  ) {
+    const { ipAddress, deviceInfo } = extractClientInfo(req);
+    return this.authService.login(data, res, ipAddress, deviceInfo);
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)

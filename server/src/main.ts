@@ -3,9 +3,12 @@ import { HttpExceptionFilter } from '@/shared/filters/http-exception.filter';
 import { ResponseInterceptor } from '@/shared/interceptors/response.interceptor';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',

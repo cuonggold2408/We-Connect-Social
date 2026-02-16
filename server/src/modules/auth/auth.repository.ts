@@ -24,4 +24,14 @@ export class AuthRepository {
       data: { emailVerifiedAt: new Date() },
     });
   }
+
+  async createRefreshToken(data: {
+    userId: string;
+    refreshToken: string;
+    expiresAt: Date;
+    deviceInfo?: string;
+    ipAddress?: string;
+  }): Promise<void> {
+    await this.prisma.accessUser.create({ data });
+  }
 }
