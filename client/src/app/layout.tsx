@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/shared/config/metadata";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
+import { Toaster } from "@/shared/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -34,6 +35,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>{children}</QueryProvider>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

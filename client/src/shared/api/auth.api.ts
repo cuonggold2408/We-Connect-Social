@@ -17,9 +17,23 @@ interface LoginPayload {
   password: string;
 }
 
+interface UserData {
+  id: string;
+  email: string;
+  username: string;
+  avatarUrl: string | null;
+  status: string;
+  emailVerifiedAt: string;
+}
+
 export const authApi = {
-  login: async (payload: LoginPayload): Promise<ApiResponse> => {
-    const { data } = await api.post<ApiResponse>("/auth/login", payload);
+  login: async (
+    payload: LoginPayload,
+  ): Promise<ApiResponse<{ user: UserData }>> => {
+    const { data } = await api.post<ApiResponse<{ user: UserData }>>(
+      "/auth/login",
+      payload,
+    );
     return data;
   },
 

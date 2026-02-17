@@ -20,9 +20,31 @@ export const api = axios.create({
   },
 });
 
+let isRefreshing = false;
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.startsWith("/auth/")
+    ) {
+      originalRequest._retry = true;
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          await api.post("/auth/refresh-token");
+          isRefreshing = false;
+          return api(originalRequest);
+        } catch {
+          isRefreshing = false;
+          window.location.href = "/login";
+          return Promise.reject(error);
+        }
+      }
+    }
     if (axios.isAxiosError(error)) {
       const data = error.response?.data as {
         message?: string | string[];

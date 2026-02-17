@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
+import { useAuthStore } from "@/shared/stores/auth.store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
@@ -33,7 +34,17 @@ const LoginForm = () => {
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.data?.user) {
+        useAuthStore.getState().setUser(data.data.user);
+      }
+
+      useAuthStore.getState().setPendingToast({
+        message: data.message,
+        type: "success",
+        description: "Chào mừng bạn đến với mạng xã hội We-Connect",
+      });
+
       router.push("/");
     },
   });
