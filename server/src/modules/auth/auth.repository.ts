@@ -34,4 +34,39 @@ export class AuthRepository {
   }): Promise<void> {
     await this.prisma.accessUser.create({ data });
   }
+
+  async findValidRefreshToken(refreshToken: string) {
+    return this.prisma.accessUser.findFirst({
+      where: {
+        refreshToken,
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+  }
+
+  async revokeRefreshToken(tokenId: string): Promise<void> {
+    await this.prisma.accessUser.update({
+      where: {
+        id: tokenId,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+  }
+
+  async revokeAllRefreshToken(userId: string): Promise<void> {
+    await this.prisma.accessUser.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+  }
 }

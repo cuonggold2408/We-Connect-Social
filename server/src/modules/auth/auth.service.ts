@@ -303,10 +303,142 @@ export class AuthService {
         id: user.id,
         email: user.email,
         username: user.username,
+        fullName: user.fullname,
         avatarUrl: user.avatarUrl,
+        bio: user.bio,
+        gender: user.gender,
+        isVerifiedBadge: user.isVerifiedBadge,
         status: user.status,
         emailVerifiedAt: user.emailVerifiedAt,
+        createdAt: user.createdAt,
       },
+    };
+  }
+
+  async logout(
+    refreshToken: string | undefined,
+    res: express.Response,
+  ): Promise<{ message: string }> {
+    if (refreshToken) {
+      const hashedToken = hashToken(refreshToken);
+
+      const findValidToken =
+        await this.authRepository.findValidRefreshToken(hashedToken);
+
+      if (findValidToken) {
+        await this.authRepository.revokeRefreshToken(findValidToken.id);
+      }
+    }
+
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+
+    return {
+      message: 'Đăng xuất thành công',
+    };
+  }
+
+  async logoutAll(
+    userId: string,
+    res: express.Response,
+  ): Promise<{ message: string }> {
+    await this.authRepository.revokeAllRefreshToken(userId);
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+    return { message: 'Đã đăng xuất khỏi tất cả thiết bị' };
+  }
+
+  async refreshToken(
+    refreshToken: string,
+    res: express.Response,
+    ipAddress?: string,
+    deviceInfo?: string,
+  ): Promise<{ message: string }> {
+    const hashedToken = hashToken(refreshToken);
+
+    const tokenRecord =
+      await this.authRepository.findValidRefreshToken(hashedToken);
+
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Token không hợp lệ');
+    }
+
+    const userId = tokenRecord.userId;
+
+    // Revoke token cũ
+    await this.authRepository.revokeRefreshToken(tokenRecord.id);
+
+    // Tạo token mới: access - refresh
+    const payload: AccessTokenPayload = { sub: userId };
+
+    const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
+      'JWT_ACCESS_EXPIRES_IN',
+    );
+    const parseTimeAccessTokenExpiresIn =
+      parseExpiresInToMs(accessTokenExpiresIn);
+
+    const newAccessToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: accessTokenExpiresIn,
+    });
+
+    const newRefreshToken = generateRefreshToken();
+    const hashedNewRefreshToken = hashToken(newRefreshToken);
+
+    const refreshExpireDays = this.configService.getOrThrow<number>(
+      'REFRESH_TOKEN_EXPIRES_DAYS',
+    );
+
+    const parseTimeRefreshTokenExpiresIn =
+      refreshExpireDays * 24 * 60 * 60 * 1000;
+
+    const refreshExpiresAt = new Date(
+      Date.now() + parseTimeRefreshTokenExpiresIn,
+    );
+
+    await this.authRepository.createRefreshToken({
+      userId,
+      refreshToken: hashedNewRefreshToken,
+      expiresAt: refreshExpiresAt,
+      deviceInfo,
+      ipAddress,
+    });
+
+    res.cookie(
+      'access_token',
+      newAccessToken,
+      getCookieConfig(parseTimeAccessTokenExpiresIn),
+    );
+
+    res.cookie(
+      'refresh_token',
+      newRefreshToken,
+      getCookieConfig(parseTimeRefreshTokenExpiresIn),
+    );
+
+    return {
+      message: 'Token đã được làm mới',
     };
   }
 }

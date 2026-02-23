@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Res,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from '@/modules/auth/auth.service';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
@@ -15,7 +16,9 @@ import { ResendVerificationDto } from '@/modules/auth/dto/resend-verification.dt
 import { LoginDto } from '@/modules/auth/dto/login.dto';
 import express from 'express';
 import { extractClientInfo } from '@/shared/utils/extract-client-info';
+import { Public } from '@/shared/decorators/public.decorator';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -51,5 +54,34 @@ export class AuthController {
     @Body() dto: ResendVerificationDto,
   ): Promise<{ message: string }> {
     return this.authService.resendVerification(dto.email);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Res({ passthrough: true }) res: express.Response,
+    @Req() req: express.Request,
+  ) {
+    const refreshToken = req.cookies?.['refresh_token'] as string;
+    return this.authService.logout(refreshToken, res);
+  }
+
+  @Post('refresh-token')
+  @HttpCode(HttpStatus.OK)
+  async refreshToken(
+    @Req() req: express.Request,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const refreshToken = req.cookies?.['refresh_token'] as string;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Không tìm thấy refresh token');
+    }
+    const { ipAddress, deviceInfo } = extractClientInfo(req);
+    return this.authService.refreshToken(
+      refreshToken,
+      res,
+      ipAddress,
+      deviceInfo,
+    );
   }
 }
