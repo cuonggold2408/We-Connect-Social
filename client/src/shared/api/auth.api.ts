@@ -21,9 +21,14 @@ interface UserData {
   id: string;
   email: string;
   username: string;
+  fullName: string | null;
   avatarUrl: string | null;
+  bio: string | null;
+  gender: string | null;
+  isVerifiedBadge: boolean;
   status: string;
-  emailVerifiedAt: string;
+  emailVerifiedAt: string | null;
+  createdAt: string;
 }
 
 export const authApi = {
@@ -53,6 +58,16 @@ export const authApi = {
     const { data } = await api.post<ApiResponse>("/auth/resend-verification", {
       email,
     });
+    return data;
+  },
+
+  refreshToken: async (): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>("/auth/refresh-token");
+    return data;
+  },
+
+  logout: async (): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>("/auth/logout");
     return data;
   },
 };

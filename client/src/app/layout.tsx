@@ -4,6 +4,7 @@ import "./globals.css";
 import { siteConfig } from "@/shared/config/metadata";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
 import { Toaster } from "@/shared/components/ui/sonner";
+import { AuthProvider } from "@/shared/providers/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </QueryProvider>
         <Toaster position="top-center" richColors />
       </body>
     </html>
