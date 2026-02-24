@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const TOKEN_COOKIE_NAME = "refresh_token";
 
-const AUTH_ROUTES: string[] = ["/login", "/register", "/verify-email"];
+export const AUTH_ROUTES: string[] = ["/login", "/register", "/verify-email"];
 
 const PUBLIC_ROUTES: string[] = [];
 
@@ -11,16 +11,11 @@ const HOME_ROUTE = "/";
 
 const LOGIN_ROUTE = "/login";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(TOKEN_COOKIE_NAME)?.value;
-
   const isAuthenticated = !!token;
-
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
-
-  console.log("isAuthRoute: ", isAuthRoute);
-
   const isPublicRoute = PUBLIC_ROUTES.some((route) =>
     pathname.startsWith(route),
   );
@@ -36,7 +31,6 @@ export function middleware(request: NextRequest) {
   }
 
   // Chưa login nhưng lại có tình vào protected route -> Cho về lại trang login
-
   if (!isAuthenticated && !isAuthRoute) {
     const loginUrl = new URL(LOGIN_ROUTE, request.url);
 
