@@ -37,6 +37,10 @@ export class AuthService {
 
   private static readonly MAX_RESEND_ATTEMPTS = 3;
   private static readonly RESEND_WINDOW_MS = 10 * 60 * 1000;
+  private static readonly SOFT_LOCK_THRESHOLD = 5;
+  private static readonly HARD_LOCK_THRESHOLD = 10;
+  private static readonly FIRST_LOCK_DURATION_MS = 15 * 60 * 1000;
+  private static readonly ESCALATED_LOCK_DURATION_MS = 30 * 60 * 1000;
 
   constructor(
     private readonly authRepository: AuthRepository,
@@ -58,6 +62,16 @@ export class AuthService {
     const salt = await bcrypt.genSalt(saltRounds);
     const hashedPassword = await bcrypt.hash(password, salt);
     return hashedPassword;
+  }
+
+  private getLockDuration(failedAttempts: number): number | null {
+    if (failedAttempts >= AuthService.HARD_LOCK_THRESHOLD) return null;
+    if (failedAttempts >= AuthService.SOFT_LOCK_THRESHOLD) {
+      return failedAttempts === AuthService.SOFT_LOCK_THRESHOLD
+        ? AuthService.FIRST_LOCK_DURATION_MS
+        : AuthService.ESCALATED_LOCK_DURATION_MS;
+    }
+    return 0;
   }
 
   private async createAndSendVerification(
@@ -231,6 +245,7 @@ export class AuthService {
     deviceInfo?: string,
   ): Promise<{ message: string; user: object }> {
     const user = await this.authRepository.findByEmail(dto.email);
+
     if (!user) {
       throw new BadRequestException('Email không tồn tại');
     }
@@ -241,78 +256,133 @@ export class AuthService {
       );
     }
 
+    if (user.status === 'BANNED') {
+      throw new UnprocessableEntityException(
+        'Tài khoản đã bị khóa. Vui lòng liên hệ admin.',
+      );
+    }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMin = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 60000,
+      );
+      throw new UnprocessableEntityException(
+        `Tài khoản tạm khóa. Vui lòng thử lại sau ${remainingMin} phút.`,
+      );
+    }
+
     const isPasswordValid = await this.comparePassword(
       dto.password,
       user.password,
     );
+
     if (!isPasswordValid) {
-      throw new BadRequestException('Email hoặc mật khẩu không chính xác');
+      const updatedUser = await this.authRepository.incrementFailedAttempts(
+        user.id,
+      );
+      const attempts = updatedUser.failedLoginAttempts;
+      const lockDuration = this.getLockDuration(attempts);
+
+      if (lockDuration === null) {
+        await this.authRepository.permanentlyLockAccount(user.id);
+        this.logger.warn(`Account permanently locked: ${user.email}`);
+        throw new UnprocessableEntityException(
+          'Tài khoản đã bị khóa. Vui lòng liên hệ admin.',
+        );
+      }
+
+      if (lockDuration > 0) {
+        await this.authRepository.lockAccount(
+          user.id,
+          new Date(Date.now() + lockDuration),
+        );
+        this.logger.warn(
+          `Account temp-locked ${lockDuration / 60000}m: ${user.email}`,
+        );
+        throw new UnprocessableEntityException(
+          `Tài khoản tạm khóa do sai mật khẩu ${attempts} lần. Thử lại sau ${lockDuration / 60000} phút.`,
+        );
+      }
+
+      const attemptsLeft = AuthService.SOFT_LOCK_THRESHOLD - attempts;
+      throw new BadRequestException(
+        `Email hoặc mật khẩu không chính xác. Còn ${attemptsLeft} lần thử.`,
+      );
     }
 
-    const payload: AccessTokenPayload = {
-      sub: user.id,
-    };
+    return this.prisma.executeTransaction(async (tx) => {
+      if (user.failedLoginAttempts > 0) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { failedLoginAttempts: 0, lockedUntil: null },
+        });
+      }
 
-    const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
-      'JWT_ACCESS_EXPIRES_IN',
-    );
+      const payload: AccessTokenPayload = {
+        sub: user.id,
+      };
 
-    const parseTimeAccessTokenExpiresIn =
-      parseExpiresInToMs(accessTokenExpiresIn);
+      const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
+        'JWT_ACCESS_EXPIRES_IN',
+      );
 
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      expiresIn: accessTokenExpiresIn,
+      const parseTimeAccessTokenExpiresIn =
+        parseExpiresInToMs(accessTokenExpiresIn);
+
+      const accessToken = this.jwtService.sign(payload, {
+        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        expiresIn: accessTokenExpiresIn,
+      });
+
+      const refreshToken = generateRefreshToken();
+      const hashedRefreshToken = hashToken(refreshToken);
+
+      const refreshExpireDays = this.configService.getOrThrow<number>(
+        'REFRESH_TOKEN_EXPIRES_DAYS',
+      );
+      const parseTimeRefreshTokenExpiresIn =
+        refreshExpireDays * 24 * 60 * 60 * 1000;
+      const refreshExpiresAt = new Date(
+        Date.now() + parseTimeRefreshTokenExpiresIn,
+      );
+
+      await this.authRepository.createRefreshToken({
+        userId: user.id,
+        refreshToken: hashedRefreshToken,
+        expiresAt: refreshExpiresAt,
+        deviceInfo,
+        ipAddress,
+      });
+
+      res.cookie(
+        'access_token',
+        accessToken,
+        getCookieConfig(parseTimeAccessTokenExpiresIn),
+      );
+
+      res.cookie(
+        'refresh_token',
+        refreshToken,
+        getCookieConfig(parseTimeRefreshTokenExpiresIn),
+      );
+
+      return {
+        message: 'Đăng nhập thành công',
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          fullName: user.fullname,
+          avatarUrl: user.avatarUrl,
+          bio: user.bio,
+          gender: user.gender,
+          isVerifiedBadge: user.isVerifiedBadge,
+          status: user.status,
+          emailVerifiedAt: user.emailVerifiedAt,
+          createdAt: user.createdAt,
+        },
+      };
     });
-
-    const refreshToken = generateRefreshToken();
-    const hashedRefreshToken = hashToken(refreshToken);
-
-    const refreshExpireDays = this.configService.getOrThrow<number>(
-      'REFRESH_TOKEN_EXPIRES_DAYS',
-    );
-    const parseTimeRefreshTokenExpiresIn =
-      refreshExpireDays * 24 * 60 * 60 * 1000;
-    const refreshExpiresAt = new Date(
-      Date.now() + parseTimeRefreshTokenExpiresIn,
-    );
-
-    await this.authRepository.createRefreshToken({
-      userId: user.id,
-      refreshToken: hashedRefreshToken,
-      expiresAt: refreshExpiresAt,
-      deviceInfo,
-      ipAddress,
-    });
-
-    res.cookie(
-      'access_token',
-      accessToken,
-      getCookieConfig(parseTimeAccessTokenExpiresIn),
-    );
-
-    res.cookie(
-      'refresh_token',
-      refreshToken,
-      getCookieConfig(parseTimeRefreshTokenExpiresIn),
-    );
-
-    return {
-      message: 'Đăng nhập thành công',
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullname,
-        avatarUrl: user.avatarUrl,
-        bio: user.bio,
-        gender: user.gender,
-        isVerifiedBadge: user.isVerifiedBadge,
-        status: user.status,
-        emailVerifiedAt: user.emailVerifiedAt,
-        createdAt: user.createdAt,
-      },
-    };
   }
 
   async logout(

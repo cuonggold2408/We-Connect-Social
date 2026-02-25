@@ -28,9 +28,9 @@ export class AuthController {
   @Public()
   @UseGuards(LoginThrottlerGuard)
   @Throttle({
-    short: { ttl: 60000, limit: 5 },
-    medium: { ttl: 60000, limit: 5 },
-    long: { ttl: 60000, limit: 5 },
+    short: { ttl: 60000, limit: 10 },
+    medium: { ttl: 60000, limit: 10 },
+    long: { ttl: 60000, limit: 10 },
   })
   @Post('login')
   @HttpCode(HttpStatus.OK)

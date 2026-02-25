@@ -69,4 +69,46 @@ export class AuthRepository {
       },
     });
   }
+
+  async findByEmailForUpdate(tx: any, email: string): Promise<User | null> {
+    const users = (await tx.$queryRaw<User[]>`
+      SELECT id, username, email, password,
+             fullname, avatar_url AS "avatarUrl", bio, gender, birthday, address,
+             email_verified_at AS "emailVerifiedAt",
+             is_verified_badge AS "isVerifiedBadge",
+             status,
+             failed_login_attempts AS "failedLoginAttempts",
+             locked_until AS "lockedUntil",
+             last_active_at AS "lastActiveAt",
+             created_at AS "createdAt",
+             updated_at AS "updatedAt"
+      FROM users WHERE email = ${email} FOR UPDATE
+    `) as Array<User>;
+
+    return users[0] ?? null;
+  }
+  async incrementFailedAttempts(userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: { increment: 1 } },
+    });
+  }
+  async lockAccount(userId: string, lockedUntil: Date): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lockedUntil },
+    });
+  }
+  async permanentlyLockAccount(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'BANNED' },
+    });
+  }
+  async resetFailedAttempts(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
+  }
 }
