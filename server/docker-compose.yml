@@ -29,9 +29,33 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  redis:
+    image: redis:7-alpine
+    container_name: we-connect-redis
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - weconnect_network
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
 volumes:
   postgres_data:
     name: weconnect_postgres_data
+  redis_data:
+    name: weconnect_redis_data
 
 networks:
   weconnect_network:
