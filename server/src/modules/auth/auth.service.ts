@@ -18,7 +18,7 @@ import { AuthRepository } from '@/modules/auth/auth.repository';
 import { LoginDto } from '@/modules/auth/dto/login.dto';
 import express from 'express';
 import { generateRefreshToken, hashToken } from '@/shared/utils/generate-token';
-import { parseExpiresInToMs } from '@/shared/utils/format-time';
+import { formatMsToHMS, parseExpiresInToMs } from '@/shared/utils/format-time';
 import { getCookieConfig } from '@/shared/config/cookie.config';
 
 interface VerificationTokenPayload {
@@ -35,12 +35,21 @@ interface AccessTokenPayload {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  // Resend verification email
   private static readonly MAX_RESEND_ATTEMPTS = 3;
   private static readonly RESEND_WINDOW_MS = 10 * 60 * 1000;
+
+  // Lock account
   private static readonly SOFT_LOCK_THRESHOLD = 5;
   private static readonly HARD_LOCK_THRESHOLD = 10;
   private static readonly FIRST_LOCK_DURATION_MS = 15 * 60 * 1000;
   private static readonly ESCALATED_LOCK_DURATION_MS = 30 * 60 * 1000;
+
+  // Password reset
+  private static readonly MAX_RESET_PER_WINDOW = 3;
+  private static readonly RESET_WINDOW_MS = 10 * 60 * 1000;
+  private static readonly MAX_RESET_PER_DAY = 5;
+  private static readonly RESET_DAY_MS = 24 * 60 * 60 * 1000;
 
   constructor(
     private readonly authRepository: AuthRepository,
@@ -98,7 +107,7 @@ export class AuthService {
     const decoded = this.jwtService.decode<{ exp: number }>(token);
     const expiresAt = new Date(decoded.exp * 1000);
 
-    await tx.emailVerificationToken.create({
+    await tx.emailVerification.create({
       data: {
         token,
         userId,
@@ -169,7 +178,7 @@ export class AuthService {
     if (payload.type !== 'email_verification') {
       throw new BadRequestException('Token không hợp lệ');
     }
-    const tokenRecord = await this.prisma.emailVerificationToken.findUnique({
+    const tokenRecord = await this.prisma.emailVerification.findUnique({
       where: { token },
       include: { user: true },
     });
@@ -191,7 +200,7 @@ export class AuthService {
         data: { emailVerifiedAt: new Date() },
       });
 
-      await tx.emailVerificationToken.update({
+      await tx.emailVerification.update({
         where: { id: tokenRecord.id },
         data: { usedAt: new Date() },
       });
@@ -211,7 +220,11 @@ export class AuthService {
     if (user.emailVerifiedAt) {
       throw new BadRequestException('Email đã được xác thực');
     }
-    const recentTokenCount = await this.prisma.emailVerificationToken.count({
+
+    const parseTimeResendVerification = formatMsToHMS(
+      AuthService.RESEND_WINDOW_MS,
+    );
+    const recentTokenCount = await this.prisma.emailVerification.count({
       where: {
         userId: user.id,
         createdAt: {
@@ -222,7 +235,7 @@ export class AuthService {
 
     if (recentTokenCount >= AuthService.MAX_RESEND_ATTEMPTS) {
       throw new UnprocessableEntityException(
-        'Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau 10 phút.',
+        `Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${parseTimeResendVerification}.`,
       );
     }
 
@@ -258,7 +271,7 @@ export class AuthService {
 
     if (user.status === 'BANNED') {
       throw new UnprocessableEntityException(
-        'Tài khoản đã bị khóa. Vui lòng liên hệ admin.',
+        'Tài khoản đã bị khóa. Vui lòng liên hệ admin',
       );
     }
 
@@ -267,7 +280,7 @@ export class AuthService {
         (user.lockedUntil.getTime() - Date.now()) / 60000,
       );
       throw new UnprocessableEntityException(
-        `Tài khoản tạm khóa. Vui lòng thử lại sau ${remainingMin} phút.`,
+        `Tài khoản tạm khóa. Vui lòng thử lại sau ${remainingMin} phút`,
       );
     }
 
@@ -287,7 +300,7 @@ export class AuthService {
         await this.authRepository.permanentlyLockAccount(user.id);
         this.logger.warn(`Account permanently locked: ${user.email}`);
         throw new UnprocessableEntityException(
-          'Tài khoản đã bị khóa. Vui lòng liên hệ admin.',
+          'Tài khoản đã bị khóa. Vui lòng liên hệ admin',
         );
       }
 
@@ -300,13 +313,13 @@ export class AuthService {
           `Account temp-locked ${lockDuration / 60000}m: ${user.email}`,
         );
         throw new UnprocessableEntityException(
-          `Tài khoản tạm khóa do sai mật khẩu ${attempts} lần. Thử lại sau ${lockDuration / 60000} phút.`,
+          `Tài khoản tạm khóa do sai mật khẩu ${attempts} lần. Thử lại sau ${lockDuration / 60000} phút`,
         );
       }
 
       const attemptsLeft = AuthService.SOFT_LOCK_THRESHOLD - attempts;
       throw new BadRequestException(
-        `Email hoặc mật khẩu không chính xác. Còn ${attemptsLeft} lần thử.`,
+        `Email hoặc mật khẩu không chính xác. Còn ${attemptsLeft} lần thử`,
       );
     }
 
@@ -510,5 +523,105 @@ export class AuthService {
     return {
       message: 'Token đã được làm mới',
     };
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.authRepository.findByEmail(email);
+
+    if (!user || !user.emailVerifiedAt) {
+      return {
+        message: 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.',
+      };
+    }
+
+    const parseTimeResetPassword = formatMsToHMS(AuthService.RESEND_WINDOW_MS);
+
+    const dailyCount = await this.authRepository.countRecentPasswordResetTokens(
+      user.id,
+      AuthService.RESET_DAY_MS,
+    );
+    if (dailyCount >= AuthService.MAX_RESET_PER_DAY) {
+      throw new UnprocessableEntityException(
+        'Bạn đã yêu cầu quá số lần cho phép. Vui lòng thử lại sau 24h hoặc liên hệ admin.',
+      );
+    }
+
+    const recentCount =
+      await this.authRepository.countRecentPasswordResetTokens(
+        user.id,
+        AuthService.RESEND_WINDOW_MS,
+      );
+    if (recentCount >= AuthService.MAX_RESET_PER_WINDOW) {
+      throw new UnprocessableEntityException(
+        `Bạn gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${parseTimeResetPassword}`,
+      );
+    }
+
+    const resetToken = generateRefreshToken();
+    const hashedResetToken = hashToken(resetToken);
+    const resetTokenExpires = this.configService.getOrThrow<string>(
+      'PASSWORD_RESET_EXPIRES_IN',
+    );
+    const parseTimeResetTokenExpires = parseExpiresInToMs(resetTokenExpires);
+    const resetTokenExpiresAt = new Date(
+      Date.now() + parseTimeResetTokenExpires,
+    );
+
+    await this.authRepository.createPasswordResetToken({
+      token: hashedResetToken,
+      userId: user.id,
+      expiresAt: resetTokenExpiresAt,
+    });
+
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+
+    const resetLink = `${frontendUrl}/reset-password?token=${hashedResetToken}`;
+
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.username,
+      resetLink,
+    );
+
+    return {
+      message: 'Đã gửi link đặt lại mật khẩu. Vui lòng kiểm tra email của bạn.',
+    };
+  }
+
+  async resetPassword(
+    token: string,
+    password: string,
+  ): Promise<{ message: string }> {
+    const tokenRecord =
+      await this.authRepository.findValidPasswordResetToken(token);
+
+    if (!tokenRecord) {
+      throw new BadRequestException(
+        'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    const hashedPassword = await this.hashPassword(password);
+
+    await this.prisma.executeTransaction(async (tx) => {
+      await tx.user.update({
+        where: { id: tokenRecord.userId },
+        data: {
+          password: hashedPassword,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+      await tx.passwordReset.update({
+        where: { id: tokenRecord.id },
+        data: { usedAt: new Date() },
+      });
+      await tx.accessUser.updateMany({
+        where: { userId: tokenRecord.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' };
   }
 }

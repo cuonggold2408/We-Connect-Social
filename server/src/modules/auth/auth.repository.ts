@@ -111,4 +111,35 @@ export class AuthRepository {
       data: { failedLoginAttempts: 0, lockedUntil: null },
     });
   }
+
+  async createPasswordResetToken(data: {
+    token: string;
+    userId: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.prisma.passwordReset.create({ data });
+  }
+
+  async findValidPasswordResetToken(token: string) {
+    return this.prisma.passwordReset.findFirst({
+      where: {
+        token,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+  }
+
+  async countRecentPasswordResetTokens(
+    userId: string,
+    windowMs: number,
+  ): Promise<number> {
+    return this.prisma.passwordReset.count({
+      where: {
+        userId,
+        createdAt: { gte: new Date(Date.now() - windowMs) },
+      },
+    });
+  }
 }

@@ -43,3 +43,23 @@ export function parseExpiresInToMs(value: string): number {
   };
   return num * multipliers[unit];
 }
+
+export function formatMsToHMS(ms: number): string {
+  if (ms < 0) {
+    throw new Error('Thời gian không hợp lệ');
+  }
+
+  const totalSeconds = Math.floor(ms / 1000);
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts: string[] = [];
+
+  if (hours > 0) parts.push(`${hours} giờ`);
+  if (minutes > 0) parts.push(`${minutes} phút`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds} giây`);
+
+  return parts.join(' ');
+}

@@ -20,6 +20,8 @@ import { extractClientInfo } from '@/shared/utils/extract-client-info';
 import { Public } from '@/shared/decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
 import { LoginThrottlerGuard } from '@/shared/guards/login-throttler.guard';
+import { ForgotPasswordDto } from '@/modules/auth/dto/forgot-password.dto';
+import { ResetPasswordDto } from '@/modules/auth/dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -120,5 +122,25 @@ export class AuthController {
       ipAddress,
       deviceInfo,
     );
+  }
+
+  @Public()
+  @Throttle({
+    short: {
+      ttl: 5000,
+      limit: 1,
+    },
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }
