@@ -1,4 +1,4 @@
-import VerifyEmailPage from "@/pages/auth/verify-email/ui/VerifyEmailPage";
+import VerifyEmailPage from "@/pages/auth/verify-email/VerifyEmailPage";
 import { createMetadata } from "@/shared/config/metadata";
 import { Metadata } from "next";
 

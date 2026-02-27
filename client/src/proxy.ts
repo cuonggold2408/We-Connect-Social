@@ -3,7 +3,13 @@ import type { NextRequest } from "next/server";
 
 const TOKEN_COOKIE_NAME = "refresh_token";
 
-export const AUTH_ROUTES: string[] = ["/login", "/register", "/verify-email"];
+export const AUTH_ROUTES: string[] = [
+  "/login",
+  "/register",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
+];
 
 const PUBLIC_ROUTES: string[] = [];
 

@@ -1,4 +1,4 @@
-import RegisterPage from "@/pages/auth/register/ui/RegisterPage";
+import RegisterPage from "@/pages/auth/register/RegisterPage";
 import { createMetadata } from "@/shared/config/metadata";
 import { Metadata } from "next";
 

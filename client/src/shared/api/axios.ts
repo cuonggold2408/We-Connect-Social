@@ -50,11 +50,14 @@ api.interceptors.response.use(
         error?: string;
         statusCode?: number;
       };
-      const message = Array.isArray(data?.message)
+      let message = Array.isArray(data?.message)
         ? data.message.join(", ")
         : data?.message || "Có lỗi xảy ra, vui lòng thử lại.";
       const statusCode = data?.statusCode || error.response?.status || 500;
       const errorType = data?.error || "Unknown Error";
+      if (statusCode === 429) {
+        message = "Bạn đã gửi quá nhiều yêu cầu, vui lòng thử lại sau";
+      }
       return Promise.reject(new ApiError(message, statusCode, errorType));
     }
     return Promise.reject(error);

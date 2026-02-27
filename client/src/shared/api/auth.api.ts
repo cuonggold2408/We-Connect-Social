@@ -61,6 +61,24 @@ export const authApi = {
     return data;
   },
 
+  forgotPassword: async (email: string): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>("/auth/forgot-password", {
+      email,
+    });
+    return data;
+  },
+  resetPassword: async (payload: {
+    token: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<ApiResponse> => {
+    const { data } = await api.post<ApiResponse>(
+      "/auth/reset-password",
+      payload,
+    );
+    return data;
+  },
+
   refreshToken: async (): Promise<ApiResponse> => {
     const { data } = await api.post<ApiResponse>("/auth/refresh-token");
     return data;

@@ -34,7 +34,9 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => onSuccess?.(),
+    onSuccess: () => {
+      onSuccess?.();
+    },
   });
 
   const onSubmit = (data: RegisterValues) => {
@@ -50,6 +52,11 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         <p className="mt-2 text-sm text-green-600">
           {registerMutation.data.message}
         </p>
+        <Link href="/login">
+          <Button className="bg-blue-primary hover:bg-blue-secondary mt-2 w-full cursor-pointer">
+            Đăng nhập ngay
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -69,7 +76,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
             <FormItem>
               <FormLabel>Tên</FormLabel>
               <FormControl>
-                <Input placeholder="john.doe" {...field} />
+                <Input placeholder="example" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -84,7 +91,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="john.doe@gmail.com"
+                  placeholder="example@gmail.com"
                   type="email"
                   {...field}
                 />

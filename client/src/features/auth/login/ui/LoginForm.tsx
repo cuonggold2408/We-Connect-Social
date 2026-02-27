@@ -69,7 +69,7 @@ const LoginForm = () => {
               <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="john.doe@gmail.com"
+                  placeholder="example@gmail.com"
                   type="email"
                   {...field}
                 />
@@ -96,6 +96,15 @@ const LoginForm = () => {
             </FormItem>
           )}
         />
+
+        <div className="text-right">
+          <Link
+            href="/forgot-password"
+            className="text-primary text-sm font-medium hover:underline"
+          >
+            Quên mật khẩu?
+          </Link>
+        </div>
 
         <Button
           type="submit"
