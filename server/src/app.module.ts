@@ -10,6 +10,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '@/shared/guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { SlidingWindowThrottlerModule } from '@/shared/throttler/sliding-window-throttler.module';
+import { RolesGuard } from '@/shared/guards/roles.guard';
 
 @Module({
   imports: [
@@ -31,6 +32,10 @@ import { SlidingWindowThrottlerModule } from '@/shared/throttler/sliding-window-
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

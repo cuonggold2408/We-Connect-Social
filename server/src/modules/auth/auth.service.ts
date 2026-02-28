@@ -20,6 +20,7 @@ import express from 'express';
 import { generateRefreshToken, hashToken } from '@/shared/utils/generate-token';
 import { formatMsToHMS, parseExpiresInToMs } from '@/shared/utils/format-time';
 import { getCookieConfig } from '@/shared/config/cookie.config';
+import { UserRole } from '@/generated/prisma/enums';
 
 interface VerificationTokenPayload {
   sub: string;
@@ -29,6 +30,7 @@ interface VerificationTokenPayload {
 
 interface AccessTokenPayload {
   sub: string;
+  role: UserRole;
 }
 
 @Injectable()
@@ -333,6 +335,7 @@ export class AuthService {
 
       const payload: AccessTokenPayload = {
         sub: user.id,
+        role: user.role,
       };
 
       const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
@@ -472,8 +475,16 @@ export class AuthService {
     // Revoke token cũ
     await this.authRepository.revokeRefreshToken(tokenRecord.id);
 
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
     // Tạo token mới: access - refresh
-    const payload: AccessTokenPayload = { sub: userId };
+    const payload: AccessTokenPayload = {
+      sub: userId,
+      role: user.role,
+    };
 
     const accessTokenExpiresIn = this.configService.getOrThrow<StringValue>(
       'JWT_ACCESS_EXPIRES_IN',

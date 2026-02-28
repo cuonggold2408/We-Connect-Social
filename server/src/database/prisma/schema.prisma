@@ -26,6 +26,14 @@ enum UserStatus {
   @@map("user_status")
 }
 
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+
+  @@map("user_role")
+}
+
 model User {
   id String @id @default(uuid(7)) @db.Uuid
   username String  @unique @db.VarChar(20)
@@ -42,6 +50,7 @@ model User {
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
   isVerifiedBadge Boolean   @default(false) @map("is_verified_badge")
   status          UserStatus   @default(ACTIVE)
+  role            UserRole   @default(USER)
 
   failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
