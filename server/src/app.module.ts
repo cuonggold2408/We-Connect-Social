@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '@/shared/guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { SlidingWindowThrottlerModule } from '@/shared/throttler/sliding-window-throttler.module';
 import { RolesGuard } from '@/shared/guards/roles.guard';
+import { PostsModule } from './modules/posts/posts.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RolesGuard } from '@/shared/guards/roles.guard';
     PrismaModule,
     UsersModule,
     AuthModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [
