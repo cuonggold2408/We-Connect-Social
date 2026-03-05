@@ -1,12 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../../generated/prisma"
-  moduleFormat = "cjs"
-  previewFeatures = ["strictUndefinedChecks","relationJoins"]
+  provider        = "prisma-client"
+  output          = "../../generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["strictUndefinedChecks", "relationJoins"]
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
 }
 
 enum UserGender {
@@ -34,25 +34,36 @@ enum UserRole {
   @@map("user_role")
 }
 
+enum ReactionType {
+  LIKE
+  LOVE
+  HAHA
+  WOW
+  SAD
+  ANGRY
+
+  @@map("reaction_type")
+}
+
 model User {
-  id String @id @default(uuid(7)) @db.Uuid
-  username String  @unique @db.VarChar(20)
+  id       String @id @default(uuid(7)) @db.Uuid
+  username String @unique @db.VarChar(20)
   email    String @unique @db.VarChar(50)
   password String @db.VarChar(100)
 
-  fullname  String?  @db.VarChar(40)
-  avatarUrl String? @map("avatar_url") @db.VarChar(255)
-  bio       String? @db.VarChar(150)
+  fullname  String?     @db.VarChar(40)
+  avatarUrl String?     @map("avatar_url") @db.VarChar(255)
+  bio       String?     @db.VarChar(150)
   gender    UserGender?
-  birthday  DateTime? @db.Date
-  address   String? @db.VarChar(255)
+  birthday  DateTime?   @db.Date
+  address   String?     @db.VarChar(255)
 
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  isVerifiedBadge Boolean   @default(false) @map("is_verified_badge")
-  status          UserStatus   @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  isVerifiedBadge Boolean    @default(false) @map("is_verified_badge")
+  status          UserStatus @default(ACTIVE)
   role            UserRole   @default(USER)
 
-  failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
 
   lastActiveAt DateTime? @map("last_active_at") @db.Timestamptz(6)
@@ -62,13 +73,17 @@ model User {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
 
-  verificationTokens EmailVerification[]
+  verificationTokens  EmailVerification[]
   passwordResetTokens PasswordReset[]
 
   accessUsers AccessUser[]
 
-  @@map("users")
+  posts     Post[]
+  reactions Reaction[]
+  comments  Comment[]
+
   @@index([searchVector], type: Gin, map: "idx_users_search")
+  @@map("users")
 }
 
 model EmailVerification {
@@ -86,15 +101,15 @@ model EmailVerification {
 }
 
 model AccessUser {
-  id         String    @id @default(uuid(7)) @db.Uuid
-  refreshToken      String @map("refresh_token")    @unique @db.VarChar(255)
-  userId     String    @map("user_id") @db.Uuid
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceInfo String?   @map("device_info") @db.VarChar(150)
-  ipAddress  String?   @map("ip_address") @db.VarChar(45)
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String    @id @default(uuid(7)) @db.Uuid
+  refreshToken String    @unique @map("refresh_token") @db.VarChar(255)
+  userId       String    @map("user_id") @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo   String?   @map("device_info") @db.VarChar(150)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@index([refreshToken])
@@ -102,15 +117,92 @@ model AccessUser {
 }
 
 model PasswordReset {
-  id String @id @default(uuid(7)) @db.Uuid
-  token String @unique @db.VarChar(128)
-  userId String  @map("user_id") @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  usedAt DateTime? @map("used_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String    @id @default(uuid(7)) @db.Uuid
+  token     String    @unique @db.VarChar(128)
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([token])
   @@index([userId])
   @@map("password_reset")
+}
+
+model Post {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  content  String? @db.Text
+  authorId String  @map("author_id") @db.Uuid
+  author   User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  reactionCount Int @default(0) @map("reaction_count")
+  commentCount  Int @default(0) @map("comment_count")
+  shareCount    Int @default(0) @map("share_count")
+
+  images    PostImage[]
+  reactions Reaction[]
+  comments  Comment[]
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model PostImage {
+  id     String @id @default(uuid(7)) @db.Uuid
+  postId String @map("post_id") @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  imageUrl String @map("image_url") @db.VarChar(500)
+  position Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([postId])
+  @@map("post_images")
+}
+
+model Reaction {
+  id   String       @id @default(uuid(7)) @db.Uuid
+  type ReactionType @default(LIKE)
+
+  postId String @map("post_id") @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([postId])
+  @@index([userId])
+  @@map("reactions")
+}
+
+model Comment {
+  id      String @id @default(uuid(7)) @db.Uuid
+  content String @db.Text
+
+  authorId String @map("author_id") @db.Uuid
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  postId String @map("post_id") @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  parentId String?  @map("parent_id") @db.Uuid
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+
+  replies Comment[] @relation("CommentReplies")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
 }
