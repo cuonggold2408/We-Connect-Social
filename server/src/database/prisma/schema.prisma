@@ -45,6 +45,15 @@ enum ReactionType {
   @@map("reaction_type")
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  UNFRIEND
+
+  @@map("friendship_status")
+}
+
 model User {
   id       String @id @default(uuid(7)) @db.Uuid
   username String @unique @db.VarChar(20)
@@ -81,6 +90,9 @@ model User {
   posts     Post[]
   reactions Reaction[]
   comments  Comment[]
+
+  sentRequests     Friendship[] @relation("SentFriendRequests")
+  receivedRequests Friendship[] @relation("ReceivedFriendRequests")
 
   @@index([searchVector], type: Gin, map: "idx_users_search")
   @@map("users")
@@ -205,4 +217,22 @@ model Comment {
   @@index([authorId])
   @@index([parentId])
   @@map("comments")
+}
+
+model Friendship {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  senderId   String           @map("sender_id") @db.Uuid
+  sender     User             @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+
+  receiverId String           @map("receiver_id") @db.Uuid
+  receiver   User             @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  status     FriendshipStatus @default(PENDING)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
+  
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+  @@map("friendships")
 }
