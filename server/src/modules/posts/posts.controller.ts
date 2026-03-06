@@ -9,6 +9,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/request/create-post.dto';
@@ -28,7 +29,7 @@ export class PostsController {
   @Get('feed')
   async getFeed(
     @Req() req: express.Request,
-    @Query('cursor') cursor?: string,
+    @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
   ) {
     const userId = req['user'].id as string;
@@ -37,7 +38,10 @@ export class PostsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string, @Req() req: express.Request) {
+  async delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: express.Request,
+  ) {
     const userId = req['user'].id as string;
     await this.postsService.deletePost(userId, id);
   }
