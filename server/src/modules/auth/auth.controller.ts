@@ -100,6 +100,7 @@ export class AuthController {
     return this.authService.logout(refreshToken, res);
   }
 
+  @Public()
   @Throttle({
     short: { ttl: 60000, limit: 10 },
     medium: { ttl: 60000, limit: 10 },
