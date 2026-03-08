@@ -30,6 +30,7 @@ export interface Post {
   commentCount: number;
   shareCount: number;
   currentUserReaction: ReactionType | null;
+  stats: { type: ReactionType; count: number }[] | null;
   createdAt: string;
   updatedAt: string | null;
 }
