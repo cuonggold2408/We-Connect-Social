@@ -7,12 +7,14 @@ import { PostsRepository } from './posts.repository';
 import { CreatePostDto } from './dto/request/create-post.dto';
 import { PostResponseDto } from './dto/response/post-response.dto';
 import { FeedCacheService } from '@/shared/cache/feed-cache.service';
+import { ReactionsService } from '../reactions/reactions.service';
 
 @Injectable()
 export class PostsService {
   constructor(
     private postsRepository: PostsRepository,
     private feedCacheService: FeedCacheService,
+    private reactionsService: ReactionsService,
   ) {}
 
   async createPost(
@@ -82,14 +84,20 @@ export class PostsService {
 
     const hasMore = posts.length > limit;
     const sliced = hasMore ? posts.slice(0, limit) : posts;
+
+    const postsWithStats = await Promise.all(
+      sliced.map(async (post) => {
+        const stats = await this.reactionsService.getReactionStats(post.id);
+        return new PostResponseDto({
+          ...post,
+          currentUserReaction: post.reactions?.[0]?.type ?? null,
+          stats: stats,
+        });
+      }),
+    );
+
     return {
-      data: sliced.map(
-        (post) =>
-          new PostResponseDto({
-            ...post,
-            currentUserReaction: post.reactions?.[0]?.type ?? null,
-          }),
-      ),
+      data: postsWithStats,
       nextCursor: hasMore ? sliced[sliced.length - 1].id : null,
     };
   }

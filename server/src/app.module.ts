@@ -13,6 +13,7 @@ import { SlidingWindowThrottlerModule } from '@/shared/throttler/sliding-window-
 import { RolesGuard } from '@/shared/guards/roles.guard';
 import { PostsModule } from '@/modules/posts/posts.module';
 import { FeedCacheModule } from '@/shared/cache/feed-cache.module';
+import { ReactionsModule } from '@/modules/reactions/reactions.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FeedCacheModule } from '@/shared/cache/feed-cache.module';
     AuthModule,
     PostsModule,
     FeedCacheModule,
+    ReactionsModule,
   ],
   controllers: [AppController],
   providers: [

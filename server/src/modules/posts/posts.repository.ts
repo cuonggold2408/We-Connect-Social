@@ -106,16 +106,13 @@ export class PostsRepository {
 
     // List ra danh sách id của bạn bè
     return friendships.map((friendship) => {
-      const { senderId, receiverId } = friendship as {
-        senderId: string;
-        receiverId: string;
-      };
+      const { senderId, receiverId } = friendship;
 
       if (senderId === userId) {
         return receiverId;
       }
       return senderId;
-    }) as string[];
+    });
   }
 
   // Lấy bài viết của bạn bè và bản thân

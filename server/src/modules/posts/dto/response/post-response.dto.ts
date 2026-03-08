@@ -1,3 +1,4 @@
+import { ReactionType } from '@/generated/prisma/enums';
 import { Expose, Type } from 'class-transformer';
 
 class AuthorDto {
@@ -31,6 +32,8 @@ export class PostResponseDto {
   @Expose() updatedAt: Date | null;
 
   @Expose() currentUserReaction: string | null;
+
+  @Expose() stats: { type: ReactionType; count: number }[] | null;
 
   constructor(partial: Partial<PostResponseDto>) {
     Object.assign(this, partial);
