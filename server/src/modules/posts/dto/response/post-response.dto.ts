@@ -1,4 +1,4 @@
-import { ReactionType } from '@/generated/prisma/enums';
+import { PostVisibility, ReactionType } from '@/generated/prisma/enums';
 import { Expose, Type } from 'class-transformer';
 
 class AuthorDto {
@@ -17,6 +17,7 @@ class PostImageDto {
 export class PostResponseDto {
   @Expose() id: string;
   @Expose() content: string | null;
+  @Expose() visibility: PostVisibility;
   @Expose() reactionCount: number;
   @Expose() commentCount: number;
 

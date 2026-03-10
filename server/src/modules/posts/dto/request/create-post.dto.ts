@@ -1,3 +1,4 @@
+import { PostVisibility } from '@/generated/prisma/enums';
 import {
   IsString,
   IsOptional,
@@ -5,6 +6,7 @@ import {
   MaxLength,
   IsUrl,
   ArrayMaxSize,
+  IsEnum,
 } from 'class-validator';
 
 export class CreatePostDto {
@@ -21,4 +23,8 @@ export class CreatePostDto {
     { each: true, message: 'URL ảnh không hợp lệ' },
   )
   imageUrls?: string[];
+
+  @IsOptional()
+  @IsEnum(PostVisibility, { message: 'Quyền riêng tư không hợp lệ' })
+  visibility?: PostVisibility;
 }

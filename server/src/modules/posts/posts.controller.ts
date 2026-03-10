@@ -29,7 +29,7 @@ export class PostsController {
   @Get('feed')
   async getFeed(
     @Req() req: express.Request,
-    @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
+    @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
   ) {
     const userId = req['user'].id as string;

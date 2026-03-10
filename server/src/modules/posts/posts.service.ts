@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PostsRepository } from './posts.repository';
+import { FeedCursor, PostsRepository } from './posts.repository';
 import { CreatePostDto } from './dto/request/create-post.dto';
 import { PostResponseDto } from './dto/response/post-response.dto';
 import { FeedCacheService } from '@/shared/cache/feed-cache.service';
@@ -16,6 +16,25 @@ export class PostsService {
     private feedCacheService: FeedCacheService,
     private reactionsService: ReactionsService,
   ) {}
+
+  private encodeCursor(post: { createdAt: Date; id: string }): string {
+    const payload: FeedCursor = {
+      createdAt: post.createdAt.toISOString(),
+      id: post.id,
+    };
+    return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  }
+  private decodeCursor(raw?: string): FeedCursor | null {
+    if (!raw) return null;
+    try {
+      const json = Buffer.from(raw, 'base64url').toString('utf8');
+      const parsed = JSON.parse(json) as FeedCursor;
+      if (!parsed?.createdAt || !parsed?.id) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
 
   async createPost(
     userId: string,
@@ -31,6 +50,7 @@ export class PostsService {
       content: dto.content,
       authorId: userId,
       imageUrls: dto.imageUrls,
+      visibility: dto.visibility,
     });
 
     return new PostResponseDto({
@@ -40,65 +60,62 @@ export class PostsService {
   }
 
   async getFeed(userId: string, cursor?: string, limit: number = 10) {
-    // 1. Lấy friendIds từ redis trước, miss thì query DB
     let friendIds = await this.feedCacheService.getFriendIds(userId);
     if (!friendIds) {
       friendIds = await this.postsRepository.getFriendIds(userId);
       await this.feedCacheService.setFriendIds(userId, friendIds);
     }
-    const hasFriends = friendIds.length > 0;
-
+    const decodedCursor = this.decodeCursor(cursor);
+    const isFirstPage = !decodedCursor;
     type FeedPost = Awaited<
-      ReturnType<PostsRepository['findFriendFeed']>
+      ReturnType<PostsRepository['findPrimaryFeed']>
     >[number];
-    let posts: FeedPost[];
+    let boostedPosts: FeedPost[] = [];
+    if (isFirstPage) {
+      boostedPosts = await this.postsRepository.findBoostedPosts(userId);
+    }
+    const primaryPosts = await this.postsRepository.findPrimaryFeed({
+      userId,
+      friendIds,
+      cursor: decodedCursor ?? undefined,
+      limit,
+      currentUserId: userId,
+    });
 
-    if (hasFriends) {
-      const authorIds = [...friendIds, userId];
-      posts = await this.postsRepository.findFriendFeed({
-        authorIds,
-        cursor,
-        limit,
-        currentUserId: userId,
-      });
-      // Ít bài → mix thêm trending
-      if (posts.length <= limit) {
-        const existingIds = posts.map((p) => p.id);
-        const remaining = limit - posts.length + 1;
-        if (remaining > 0) {
-          const trending = await this.postsRepository.findTrendingPosts({
-            excludeIds: existingIds,
-            limit: remaining,
-            currentUserId: userId,
-          });
-          posts = [...posts, ...trending];
-        }
+    const boostedIds = new Set(boostedPosts.map((p) => p.id));
+    const primaryDeduped = primaryPosts.filter((p) => !boostedIds.has(p.id));
+    let merged: FeedPost[] = [...boostedPosts, ...primaryDeduped];
+
+    if (isFirstPage && merged.length < limit + 1) {
+      const existingIds = merged.map((p) => p.id);
+      const remaining = limit + 1 - merged.length;
+      if (remaining > 0) {
+        const trending = await this.postsRepository.findTrendingPosts({
+          excludeIds: existingIds,
+          limit: remaining,
+          currentUserId: userId,
+        });
+        merged = [...merged, ...trending];
       }
-    } else {
-      posts = await this.postsRepository.findTrendingPosts({
-        cursor,
-        limit,
-        currentUserId: userId,
-      });
     }
 
-    const hasMore = posts.length > limit;
-    const sliced = hasMore ? posts.slice(0, limit) : posts;
-
+    const hasMore = merged.length > limit;
+    const sliced = hasMore ? merged.slice(0, limit) : merged;
     const postsWithStats = await Promise.all(
       sliced.map(async (post) => {
         const stats = await this.reactionsService.getReactionStats(post.id);
         return new PostResponseDto({
           ...post,
           currentUserReaction: post.reactions?.[0]?.type ?? null,
-          stats: stats,
+          stats,
         });
       }),
     );
+    const last = sliced[sliced.length - 1];
 
     return {
       data: postsWithStats,
-      nextCursor: hasMore ? sliced[sliced.length - 1].id : null,
+      nextCursor: hasMore && last ? this.encodeCursor(last) : null,
     };
   }
 
