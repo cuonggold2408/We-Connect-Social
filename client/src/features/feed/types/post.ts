@@ -1,4 +1,5 @@
 export type ReactionType = "LIKE" | "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY";
+export type PostVisibility = "PUBLIC" | "FRIENDS" | "PRIVATE";
 
 export interface PostAuthor {
   id: string;
@@ -24,6 +25,7 @@ export interface Comment {
 export interface Post {
   id: string;
   content: string | null;
+  visibility: PostVisibility;
   author: PostAuthor;
   images: PostImage[];
   reactionCount: number;
@@ -42,6 +44,7 @@ export interface PaginatedResponse<T> {
 export interface CreatePostDto {
   content?: string;
   imageUrls?: string[];
+  visibility?: PostVisibility;
 }
 
 export interface CreateCommentDto {

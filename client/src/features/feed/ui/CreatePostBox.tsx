@@ -6,14 +6,34 @@ import { postsApi } from "@/shared/api/posts.api";
 import { useAuthStore } from "@/shared/stores/auth.store";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Button } from "@/shared/components/ui/button";
-import { ImagePlus } from "lucide-react";
+import { Globe, ImagePlus, Lock, Users } from "lucide-react";
 import { toast } from "sonner";
+import { PostVisibility } from "@/features/feed/types/post";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
+
+const VISIBILITY_OPTIONS: {
+  value: PostVisibility;
+  label: string;
+  icon: typeof Globe;
+}[] = [
+  { value: "PUBLIC", label: "Công khai", icon: Globe },
+  { value: "FRIENDS", label: "Bạn bè", icon: Users },
+  { value: "PRIVATE", label: "Chỉ mình tôi", icon: Lock },
+];
 
 const CreatePostBox = () => {
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
 
   const createMutation = useMutation({
     mutationFn: postsApi.createPost,
@@ -28,13 +48,19 @@ const CreatePostBox = () => {
     const trimmedContent = content.trim();
     setContent("");
     setIsExpanded(false);
+    setVisibility("PUBLIC");
 
-    toast.promise(createMutation.mutateAsync({ content: trimmedContent }), {
-      loading: "Đang đăng bài...",
-      success: "Đã đăng bài viết thành công!",
-      error: "Không thể đăng bài, vui lòng thử lại.",
-    });
+    toast.promise(
+      createMutation.mutateAsync({ content: trimmedContent, visibility }),
+      {
+        loading: "Đang đăng bài...",
+        success: "Đã đăng bài viết thành công!",
+        error: "Không thể đăng bài, vui lòng thử lại.",
+      },
+    );
   };
+
+  console.log("visibility: ", visibility);
 
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -65,10 +91,36 @@ const CreatePostBox = () => {
 
       {isExpanded && (
         <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-          <button className="flex cursor-pointer items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-            <ImagePlus className="text-blue-primary size-6" />
-            <span className="text-md">Ảnh</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="flex cursor-pointer items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+              <ImagePlus className="text-blue-primary size-6" />
+              <span className="text-md">Ảnh</span>
+            </button>
+
+            <Select
+              value={visibility}
+              onValueChange={(value) => setVisibility(value as PostVisibility)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {VISIBILITY_OPTIONS.map((option) => (
+                    <SelectItem
+                      className="cursor-pointer"
+                      key={option.value}
+                      value={option.value}
+                    >
+                      <option.icon className="h-3.5 w-3.5" />
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex gap-2">
             <Button
               variant="ghost"

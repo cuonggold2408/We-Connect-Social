@@ -22,6 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    setLoading(true);
+
     const initAuth = async () => {
       try {
         const response = await userApi.getMe();

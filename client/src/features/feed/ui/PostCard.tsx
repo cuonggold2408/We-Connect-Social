@@ -1,9 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  ThumbsUp,
+  MessageSquare,
+  Share2,
+  Globe,
+  Users,
+  Lock,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import type { Post, ReactionType } from "@/features/feed/types/post";
+import type {
+  Post,
+  PostVisibility,
+  ReactionType,
+} from "@/features/feed/types/post";
 import Image from "next/image";
 import { timeAgo } from "@/shared/helpers/format-time";
 import {
@@ -23,6 +35,15 @@ const REACTION_CONFIG: Record<
   WOW: { icon: "😮", label: "Wow", color: "text-yellow-500" },
   SAD: { icon: "😢", label: "Buồn", color: "text-yellow-500" },
   ANGRY: { icon: "😡", label: "Phẫn nộ", color: "text-orange-500" },
+};
+
+const VISIBILITY_ICON: Record<
+  PostVisibility,
+  { icon: typeof Globe; label: string }
+> = {
+  PUBLIC: { icon: Globe, label: "Công khai" },
+  FRIENDS: { icon: Users, label: "Bạn bè" },
+  PRIVATE: { icon: Lock, label: "Chỉ mình tôi" },
 };
 
 interface PostCardProps {
@@ -62,7 +83,15 @@ const PostCard = ({ post }: PostCardProps) => {
             <p className="text-sm font-semibold">
               {post.author.fullname || post.author.username}
             </p>
-            <p className="text-xs text-gray-400">{timeAgo(post.createdAt)}</p>
+            <p className="flex items-center gap-1 text-xs text-gray-600">
+              <span>{timeAgo(post.createdAt)}</span>
+              <span>·</span>
+              {(() => {
+                const vis = VISIBILITY_ICON[post.visibility ?? "PUBLIC"];
+                const Icon = vis.icon;
+                return <Icon className="h-4 w-4" aria-label={vis.label} />;
+              })()}
+            </p>
           </div>
         </div>
         <button className="rounded-full p-1.5 hover:bg-gray-100">

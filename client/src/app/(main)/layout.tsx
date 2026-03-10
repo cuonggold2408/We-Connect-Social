@@ -1,12 +1,21 @@
+"use client";
+
 import Header from "@/shared/components/layout/Header";
 import LeftSidebar from "@/shared/components/layout/LeftSidebar";
 import RightSidebar from "@/shared/components/layout/RightSidebar";
+import Loading from "@/shared/loading/Loading";
+import { useAuthStore } from "@/shared/stores/auth.store";
 
 export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const isLoading = useAuthStore((s) => s.isLoading);
+  if (isLoading) {
+    return <Loading />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
