@@ -29,6 +29,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/shared/components/ui/avatar";
+import { useState } from "react";
 
 const REACTION_CONFIG: Record<
   ReactionType,
@@ -56,6 +57,8 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post }: PostCardProps) => {
+  const [reactionOpen, setReactionOpen] = useState(false);
+
   const { toggleReaction } = useReaction(post.id);
 
   const currentReaction = post.currentUserReaction;
@@ -67,6 +70,7 @@ const PostCard = ({ post }: PostCardProps) => {
     post.reactionCount;
 
   const handleReaction = (type: ReactionType | null) => {
+    setReactionOpen(false);
     if (type === null || type === currentReaction) {
       toggleReaction(null);
     } else {
@@ -213,7 +217,12 @@ const PostCard = ({ post }: PostCardProps) => {
       )}
 
       <div className="mx-4 flex items-center justify-between border-t border-gray-100 py-1">
-        <HoverCard openDelay={500} closeDelay={200}>
+        <HoverCard
+          openDelay={500}
+          closeDelay={200}
+          open={reactionOpen}
+          onOpenChange={setReactionOpen}
+        >
           <HoverCardTrigger asChild>
             <button
               onClick={() => handleReaction(currentReaction ? null : "LIKE")}
