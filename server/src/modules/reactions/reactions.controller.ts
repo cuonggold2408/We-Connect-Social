@@ -10,6 +10,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   Query,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { ReactionsService } from '@modules/reactions/reactions.service';
 import { CreateReactionDto } from '@modules/reactions/dto/request/create-reaction.dto';
@@ -20,12 +21,18 @@ import { ReactionType } from '@/generated/prisma/enums';
 export class ReactionsController {
   constructor(private readonly reactionsService: ReactionsService) {}
 
+  @Get('stats')
+  async getStats(@Param('postId', ParseUUIDPipe) postId: string) {
+    return this.reactionsService.getReactionStats(postId);
+  }
+
   @Get()
   async getAllReactionsOfPost(
     @Param('postId', ParseUUIDPipe) postId: string,
     @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
-    @Query('type') type?: ReactionType,
+    @Query('type', new ParseEnumPipe(ReactionType, { optional: true }))
+    type?: ReactionType,
   ) {
     return this.reactionsService.getAllReactionsOfPost(
       postId,
@@ -54,10 +61,5 @@ export class ReactionsController {
   ) {
     const userId = req['user'].id as string;
     await this.reactionsService.removeReaction(userId, postId);
-  }
-
-  @Get('stats')
-  async getStats(@Param('postId', ParseUUIDPipe) postId: string) {
-    return this.reactionsService.getReactionStats(postId);
   }
 }
