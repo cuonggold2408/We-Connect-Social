@@ -58,34 +58,6 @@ export class PostsRepository {
     });
   }
 
-  async findFeed(params: {
-    cursor?: string;
-    limit: number;
-    currentUserId: string;
-  }) {
-    const { cursor, limit, currentUserId } = params;
-
-    return this.prisma.post.findMany({
-      take: limit + 1,
-      ...(cursor && {
-        cursor: { id: cursor },
-        skip: 1,
-      }),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        author: {
-          select: { id: true, username: true, fullname: true, avatarUrl: true },
-        },
-        images: { orderBy: { position: 'asc' } },
-        reactions: {
-          where: { userId: currentUserId },
-          select: { type: true },
-          take: 1,
-        },
-      },
-    });
-  }
-
   async findById(id: string) {
     return this.prisma.post.findUnique({
       where: { id },
@@ -136,11 +108,11 @@ export class PostsRepository {
   }
 
   async findBoostedPosts(userId: string) {
-    const oneMinuteAgo = new Date(Date.now() - 60_000);
+    const boostWindow = new Date(Date.now() - 3 * 60000);
     return this.prisma.post.findMany({
       where: {
         authorId: userId,
-        createdAt: { gte: oneMinuteAgo },
+        createdAt: { gte: boostWindow },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: this.feedInclude(userId),
@@ -148,23 +120,15 @@ export class PostsRepository {
   }
 
   async findPrimaryFeed(params: {
-    userId: string;
     friendIds: string[];
     cursor?: FeedCursor;
     limit: number;
     currentUserId: string;
   }) {
-    const { userId, friendIds, cursor, limit, currentUserId } = params;
-    const visibilityFilter =
-      friendIds.length > 0
-        ? [
-            { authorId: userId },
-            {
-              authorId: { in: friendIds },
-              visibility: { in: ['PUBLIC', 'FRIENDS'] as PostVisibility[] },
-            },
-          ]
-        : [{ authorId: userId }];
+    const { friendIds, cursor, limit, currentUserId } = params;
+
+    if (friendIds.length === 0) return [];
+
     const cursorFilter = cursor
       ? [
           { createdAt: { lt: new Date(cursor.createdAt) } },
@@ -173,11 +137,15 @@ export class PostsRepository {
             id: { lt: cursor.id },
           },
         ]
-      : undefined;
+      : null;
+
     return this.prisma.post.findMany({
       where: {
         AND: [
-          { OR: visibilityFilter },
+          {
+            authorId: { in: friendIds },
+            visibility: { in: [PostVisibility.PUBLIC, PostVisibility.FRIENDS] },
+          },
           ...(cursorFilter ? [{ OR: cursorFilter }] : []),
         ],
       },
@@ -187,40 +155,18 @@ export class PostsRepository {
     });
   }
 
-  // Lấy bài viết của bạn bè và bản thân
-  async findFriendFeed(params: {
-    authorIds: string[];
-    cursor?: string;
-    limit: number;
-    currentUserId: string;
-  }) {
-    const { authorIds, cursor, limit, currentUserId } = params;
-    return this.prisma.post.findMany({
-      where: { authorId: { in: authorIds } },
-      take: limit + 1,
-      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        author: { select: this.authorSelect },
-        images: { orderBy: { position: 'asc' } },
-        reactions: {
-          where: { userId: currentUserId },
-          select: { type: true },
-          take: 1,
-        },
-      },
-    });
-  }
-
   async findTrendingPosts(params: {
     excludeIds: string[];
+    excludeAuthorId: string;
     limit: number;
     currentUserId: string;
   }) {
-    const { excludeIds, limit, currentUserId } = params;
+    const { excludeIds, excludeAuthorId, limit, currentUserId } = params;
+
     return this.prisma.post.findMany({
       where: {
         visibility: 'PUBLIC',
+        authorId: { not: excludeAuthorId },
         ...(excludeIds.length > 0 && { id: { notIn: excludeIds } }),
       },
       take: limit,

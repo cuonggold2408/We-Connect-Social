@@ -65,44 +65,52 @@ export class PostsService {
       friendIds = await this.postsRepository.getFriendIds(userId);
       await this.feedCacheService.setFriendIds(userId, friendIds);
     }
+
     const decodedCursor = this.decodeCursor(cursor);
     const isFirstPage = !decodedCursor;
+
     type FeedPost = Awaited<
       ReturnType<PostsRepository['findPrimaryFeed']>
     >[number];
+
     let boostedPosts: FeedPost[] = [];
     if (isFirstPage) {
       boostedPosts = await this.postsRepository.findBoostedPosts(userId);
     }
+
     const primaryPosts = await this.postsRepository.findPrimaryFeed({
-      userId,
       friendIds,
       cursor: decodedCursor ?? undefined,
       limit,
       currentUserId: userId,
     });
 
+    const primaryHasMore = primaryPosts.length > limit;
+
     const boostedIds = new Set(boostedPosts.map((p) => p.id));
     const primaryDeduped = primaryPosts.filter((p) => !boostedIds.has(p.id));
-    let merged: FeedPost[] = [...boostedPosts, ...primaryDeduped];
 
-    if (isFirstPage && merged.length < limit + 1) {
-      const existingIds = merged.map((p) => p.id);
-      const remaining = limit + 1 - merged.length;
+    const primarySlots = limit - boostedPosts.length;
+    const primaryToShow = primaryDeduped.slice(0, primarySlots);
+
+    let displayPosts: FeedPost[] = [...boostedPosts, ...primaryToShow];
+
+    if (isFirstPage && displayPosts.length < limit) {
+      const existingIds = displayPosts.map((p) => p.id);
+      const remaining = limit - displayPosts.length;
       if (remaining > 0) {
         const trending = await this.postsRepository.findTrendingPosts({
           excludeIds: existingIds,
+          excludeAuthorId: userId,
           limit: remaining,
           currentUserId: userId,
         });
-        merged = [...merged, ...trending];
+        displayPosts = [...displayPosts, ...trending];
       }
     }
 
-    const hasMore = merged.length > limit;
-    const sliced = hasMore ? merged.slice(0, limit) : merged;
     const postsWithStats = await Promise.all(
-      sliced.map(async (post) => {
+      displayPosts.map(async (post) => {
         const stats = await this.reactionsService.getReactionStats(post.id);
         return new PostResponseDto({
           ...post,
@@ -111,11 +119,13 @@ export class PostsService {
         });
       }),
     );
-    const last = sliced[sliced.length - 1];
+
+    const lastPrimary = primaryToShow[primaryToShow.length - 1];
 
     return {
       data: postsWithStats,
-      nextCursor: hasMore && last ? this.encodeCursor(last) : null,
+      nextCursor:
+        primaryHasMore && lastPrimary ? this.encodeCursor(lastPrimary) : null,
     };
   }
 
