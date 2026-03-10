@@ -51,3 +51,16 @@ export interface CreateCommentDto {
   content: string;
   parentId?: string;
 }
+
+export interface ReactionUser {
+  id: string;
+  username: string;
+  fullname: string | null;
+  avatarUrl: string | null;
+}
+
+export interface ReactionItem {
+  id: string;
+  type: ReactionType;
+  user: ReactionUser;
+}

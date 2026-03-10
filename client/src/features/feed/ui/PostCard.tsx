@@ -23,25 +23,15 @@ import {
   HoverCardTrigger,
 } from "@/shared/components/ui/hover-card";
 import { motion } from "motion/react";
-import { useReaction } from "../hooks/useReactions";
+import { useReaction } from "@/features/feed/hooks/useReactions";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/shared/components/ui/avatar";
 import { useState } from "react";
-
-const REACTION_CONFIG: Record<
-  ReactionType,
-  { icon: string; label: string; color: string }
-> = {
-  LIKE: { icon: "👍", label: "Thích", color: "text-blue-600" },
-  LOVE: { icon: "❤️", label: "Yêu thích", color: "text-red-500" },
-  HAHA: { icon: "😆", label: "Haha", color: "text-yellow-500" },
-  WOW: { icon: "😮", label: "Wow", color: "text-yellow-500" },
-  SAD: { icon: "😢", label: "Buồn", color: "text-yellow-500" },
-  ANGRY: { icon: "😡", label: "Phẫn nộ", color: "text-orange-500" },
-};
+import { REACTION_CONFIG } from "@/features/feed/constants/config";
+import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 
 const VISIBILITY_ICON: Record<
   PostVisibility,
@@ -168,31 +158,36 @@ const PostCard = ({ post }: PostCardProps) => {
         post.commentCount > 0 ||
         post.shareCount > 0) && (
         <div className="flex items-center justify-between px-4 py-2 text-[13px] text-gray-500">
-          <div className="flex cursor-pointer items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             {totalReactionCount > 0 && (
-              <>
-                <div className="flex items-center -space-x-1">
-                  {topReactions?.map((stat, index) => {
-                    const reactConfig = REACTION_CONFIG[stat.type];
-                    if (!reactConfig) return null;
-
-                    return (
-                      <div
-                        key={stat.type}
-                        className="flex h-5 w-5 items-center justify-center rounded-full bg-white ring-2 ring-white"
-                        style={{ zIndex: 3 - index }} // Cái nào count nhiều hơn thì đè lên đầu
-                      >
-                        <span className="text-lg leading-none">
-                          {reactConfig.icon}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <span className="ml-1 text-[17px] hover:underline">
-                  {totalReactionCount}
-                </span>
-              </>
+              <ReactionListDialog
+                postId={post.id}
+                stats={reactionStats ?? []}
+                totalCount={totalReactionCount}
+              >
+                <button className="flex cursor-pointer items-center gap-1.5">
+                  <div className="flex items-center -space-x-1">
+                    {topReactions?.map((stat, index) => {
+                      const reactConfig = REACTION_CONFIG[stat.type];
+                      if (!reactConfig) return null;
+                      return (
+                        <div
+                          key={stat.type}
+                          className="flex h-5 w-5 items-center justify-center rounded-full bg-white ring-2 ring-white"
+                          style={{ zIndex: 3 - index }} // Cái nào count nhiều hơn thì đè lên đầu
+                        >
+                          <span className="text-lg leading-none">
+                            {reactConfig.icon}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="ml-1 text-[17px] hover:underline">
+                    {totalReactionCount}
+                  </span>
+                </button>
+              </ReactionListDialog>
             )}
           </div>
 

@@ -18,16 +18,21 @@ const PostList = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useCallback(
     (node: HTMLDivElement | null) => {
-      if (isFetchingNextPage) return;
       if (observerRef.current) observerRef.current.disconnect();
+      if (isFetchingNextPage || !node) return;
 
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage) {
-          fetchNextPage();
-        }
-      });
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNextPage) {
+            fetchNextPage();
+          }
+        },
+        {
+          rootMargin: "0px 0px 300px 0px",
+        },
+      );
 
-      if (node) observerRef.current.observe(node);
+      observerRef.current.observe(node);
     },
     [isFetchingNextPage, hasNextPage, fetchNextPage],
   );

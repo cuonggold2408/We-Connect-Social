@@ -1,5 +1,9 @@
 import { api } from "@/shared/api/axios";
-import type { ReactionType } from "@/features/feed/types/post";
+import type {
+  PaginatedResponse,
+  ReactionItem,
+  ReactionType,
+} from "@/features/feed/types/post";
 
 interface ReactionStats {
   type: ReactionType;
@@ -23,7 +27,19 @@ export const reactionsApi = {
   react: async (postId: string, type: ReactionType): Promise<void> => {
     await api.post(`/posts/${postId}/reactions`, { type });
   },
+
   removeReaction: async (postId: string): Promise<void> => {
     await api.delete(`/posts/${postId}/reactions`);
+  },
+
+  getAll: async (
+    postId: string,
+    params?: { cursor?: string; limit?: number; type?: ReactionType },
+  ): Promise<PaginatedResponse<ReactionItem>> => {
+    const { data } = await api.get<
+      ApiResponse<PaginatedResponse<ReactionItem>>
+    >(`/posts/${postId}/reactions`, { params });
+
+    return data.data!;
   },
 };
