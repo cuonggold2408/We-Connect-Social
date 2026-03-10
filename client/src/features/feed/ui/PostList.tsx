@@ -48,7 +48,15 @@ const PostList = () => {
     );
   }
 
-  const posts = data?.pages.flatMap((page) => page.data) ?? [];
+  const seen = new Set<string>();
+  const posts =
+    data?.pages
+      .flatMap((page) => page.data)
+      .filter((post) => {
+        if (seen.has(post.id)) return false;
+        seen.add(post.id);
+        return true;
+      }) ?? [];
 
   if (posts.length === 0) {
     return (

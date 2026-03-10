@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   MoreHorizontal,
   ThumbsUp,
@@ -24,6 +23,12 @@ import {
   HoverCardTrigger,
 } from "@/shared/components/ui/hover-card";
 import { motion } from "motion/react";
+import { useReaction } from "../hooks/useReactions";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/shared/components/ui/avatar";
 
 const REACTION_CONFIG: Record<
   ReactionType,
@@ -51,20 +56,22 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post }: PostCardProps) => {
-  const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
-    post.currentUserReaction,
-  );
+  const { toggleReaction } = useReaction(post.id);
 
+  const currentReaction = post.currentUserReaction;
   const reactionStats = post.stats;
-
   const topReactions = reactionStats?.slice(0, 3);
 
   const totalReactionCount =
-    reactionStats?.reduce((sum, stat) => sum + stat.count, 0) ||
+    reactionStats?.reduce((sum, stat) => sum + stat.count, 0) ??
     post.reactionCount;
 
   const handleReaction = (type: ReactionType | null) => {
-    setCurrentReaction(type);
+    if (type === null || type === currentReaction) {
+      toggleReaction(null);
+    } else {
+      toggleReaction(type);
+    }
   };
 
   const reactionDisplay = currentReaction
@@ -76,9 +83,15 @@ const PostCard = ({ post }: PostCardProps) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500">
-            {post.author.fullname?.[0] || post.author.username[0]}
-          </div>
+          <Avatar className="size-10">
+            <AvatarImage
+              src={post.author.avatarUrl ?? ""}
+              alt={post.author.username[0] ?? ""}
+            />
+            <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
+              {post.author.fullname?.[0] || post.author.username[0]}
+            </AvatarFallback>
+          </Avatar>
           <div>
             <p className="text-sm font-semibold">
               {post.author.fullname || post.author.username}
@@ -147,7 +160,9 @@ const PostCard = ({ post }: PostCardProps) => {
       )}
 
       {/* UI để hiện reaction count, comment count, share count */}
-      {(totalReactionCount > 0 || post.commentCount > 0) && (
+      {(totalReactionCount > 0 ||
+        post.commentCount > 0 ||
+        post.shareCount > 0) && (
         <div className="flex items-center justify-between px-4 py-2 text-[13px] text-gray-500">
           <div className="flex cursor-pointer items-center gap-1.5">
             {totalReactionCount > 0 && (
@@ -179,7 +194,7 @@ const PostCard = ({ post }: PostCardProps) => {
 
           <div className="flex gap-3 text-[15px]">
             <div className="flex gap-3">
-              {post.commentCount === 0 && (
+              {post.commentCount > 0 && (
                 <span className="cursor-pointer hover:underline">
                   {post.commentCount} bình luận
                 </span>
@@ -187,7 +202,7 @@ const PostCard = ({ post }: PostCardProps) => {
             </div>
 
             <div className="flex gap-3">
-              {post.shareCount === 0 && (
+              {post.shareCount > 0 && (
                 <span className="cursor-pointer hover:underline">
                   {post.shareCount} lượt chia sẻ
                 </span>

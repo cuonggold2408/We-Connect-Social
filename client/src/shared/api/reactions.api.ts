@@ -19,4 +19,11 @@ export const reactionsApi = {
     );
     return data.data || [];
   },
+
+  react: async (postId: string, type: ReactionType): Promise<void> => {
+    await api.post(`/posts/${postId}/reactions`, { type });
+  },
+  removeReaction: async (postId: string): Promise<void> => {
+    await api.delete(`/posts/${postId}/reactions`);
+  },
 };

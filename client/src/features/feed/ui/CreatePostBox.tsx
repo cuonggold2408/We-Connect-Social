@@ -17,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/shared/components/ui/avatar";
 
 const VISIBILITY_OPTIONS: {
   value: PostVisibility;
@@ -60,14 +65,15 @@ const CreatePostBox = () => {
     );
   };
 
-  console.log("visibility: ", visibility);
-
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-start gap-3">
-        <div className="bg-blue-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
-          {user?.fullName?.[0] || user?.username?.[0] || ""}
-        </div>
+        <Avatar className="size-10">
+          <AvatarImage src={user?.avatarUrl ?? ""} alt={user?.fullName ?? ""} />
+          <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
+            {user?.fullName?.[0] || user?.username?.[0]}
+          </AvatarFallback>
+        </Avatar>
 
         <div className="flex-1">
           {isExpanded ? (

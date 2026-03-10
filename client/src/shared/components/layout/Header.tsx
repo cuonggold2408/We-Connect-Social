@@ -1,16 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, Bell, MessageCircle, Users, X, House } from "lucide-react";
+import {
+  Search,
+  Bell,
+  MessageCircle,
+  Users,
+  X,
+  House,
+  User,
+  Settings,
+  LogOut,
+  Loader2,
+} from "lucide-react";
 import { useAuthStore } from "@/shared/stores/auth.store";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/lib/utils";
 import GroupIcon from "@/shared/components/ui/group-icon";
 import { Button } from "@/shared/components/ui/button";
-import MenuGridIcon from "../ui/menugrid-icon";
+import MenuGridIcon from "@/shared/components/ui/menugrid-icon";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/shared/components/ui/avatar";
+import { authApi } from "@/shared/api/auth.api";
+import { useMutation } from "@tanstack/react-query";
 
 const NAV_ITEMS = [
   { href: "/", label: "Trang chủ", icon: House },
@@ -22,12 +48,26 @@ const NAV_ITEMS = [
 const Header = () => {
   const user = useAuthStore((s) => s.user);
   const pathname = usePathname();
+  const router = useRouter();
+  const clearUser = useAuthStore((s) => s.clearUser);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const closeSearch = useCallback(() => setIsSearchOpen(false), []);
+
+  const logoutMutation = useMutation({
+    mutationFn: authApi.logout,
+    onSettled: () => {
+      clearUser();
+      router.push("/login");
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   useEffect(() => {
     if (isSearchOpen) inputRef.current?.focus();
@@ -137,9 +177,42 @@ const Header = () => {
           <Button className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200">
             <Bell className="size-5 text-gray-600" />
           </Button>
-          <div className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
-            {user?.fullName?.[0] || user?.username?.[0] || ""}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="outline-none">
+              <Avatar className="size-10">
+                <AvatarImage
+                  src={user?.avatarUrl ?? ""}
+                  alt={user?.fullName ?? ""}
+                />
+                <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
+                  {user?.fullName?.[0] || user?.username?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="mt-2 w-38">
+              <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer p-2">
+                <User className="h-4 w-4" /> Trang cá nhân
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer p-2">
+                <Settings className="h-4 w-4" /> Cài đặt
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="cursor-pointer p-2"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+              >
+                {logoutMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                {logoutMutation.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
