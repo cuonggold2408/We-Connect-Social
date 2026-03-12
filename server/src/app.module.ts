@@ -14,6 +14,7 @@ import { RolesGuard } from '@/shared/guards/roles.guard';
 import { PostsModule } from '@/modules/posts/posts.module';
 import { FeedCacheModule } from '@/shared/cache/feed-cache.module';
 import { ReactionsModule } from '@/modules/reactions/reactions.module';
+import { UploadModule } from '@/modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ReactionsModule } from '@/modules/reactions/reactions.module';
     PostsModule,
     FeedCacheModule,
     ReactionsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [
