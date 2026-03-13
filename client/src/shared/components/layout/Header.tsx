@@ -179,7 +179,7 @@ const Header = () => {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger className="outline-none">
-              <Avatar className="size-10">
+              <Avatar className="size-10 cursor-pointer">
                 <AvatarImage
                   src={user?.avatarUrl ?? ""}
                   alt={user?.fullName ?? ""}

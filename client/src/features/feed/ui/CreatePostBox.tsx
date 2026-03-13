@@ -22,6 +22,8 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/shared/components/ui/avatar";
+import { useImageUpload } from "../hooks/useImageUpload";
+import ImagePreviewGrid from "./ImagePreviewGrid";
 
 const VISIBILITY_OPTIONS: {
   value: PostVisibility;
@@ -40,6 +42,18 @@ const CreatePostBox = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
 
+  const {
+    images,
+    inputRef,
+    addFiles,
+    removeImage,
+    uploadAll,
+    reset: resetImages,
+    openFilePicker,
+    hasImages,
+    isUploading,
+  } = useImageUpload();
+
   const createMutation = useMutation({
     mutationFn: postsApi.createPost,
     onSuccess: () => {
@@ -47,23 +61,40 @@ const CreatePostBox = () => {
     },
   });
 
-  const handleSubmit = () => {
-    if (!content.trim()) return;
-
+  const handleSubmit = async () => {
     const trimmedContent = content.trim();
-    setContent("");
-    setIsExpanded(false);
-    setVisibility("PUBLIC");
+    if (!trimmedContent && !hasImages) return;
 
-    toast.promise(
-      createMutation.mutateAsync({ content: trimmedContent, visibility }),
-      {
-        loading: "Đang đăng bài...",
-        success: "Đã đăng bài viết thành công!",
-        error: "Không thể đăng bài, vui lòng thử lại.",
-      },
-    );
+    try {
+      let imageUrls: string[] | undefined;
+
+      if (hasImages) {
+        imageUrls = await uploadAll();
+      }
+
+      setContent("");
+      setIsExpanded(false);
+      setVisibility("PUBLIC");
+      resetImages();
+
+      toast.promise(
+        createMutation.mutateAsync({
+          content: trimmedContent,
+          visibility,
+          imageUrls,
+        }),
+        {
+          loading: "Đang đăng bài...",
+          success: "Đã đăng bài viết thành công!",
+          error: "Không thể đăng bài, vui lòng thử lại.",
+        },
+      );
+    } catch {
+      toast.error("Đăng bài viết thất bại, vui lòng thử lại.");
+    }
   };
+
+  const canSubmit = (!!content.trim() || hasImages) && !isUploading;
 
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -77,13 +108,29 @@ const CreatePostBox = () => {
 
         <div className="flex-1">
           {isExpanded ? (
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={`${user?.username} ơi, bạn đang nghĩ gì thế?`}
-              className="min-h-25 resize-none border-0 px-0 pt-2 text-sm focus-visible:ring-0"
-              autoFocus
-            />
+            <>
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={`${user?.username} ơi, bạn đang nghĩ gì thế?`}
+                className="min-h-25 resize-none border-0 px-0 pt-2 text-sm focus-visible:ring-0"
+                autoFocus
+              />
+
+              <ImagePreviewGrid images={images} onRemove={removeImage} />
+
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </>
           ) : (
             <button
               onClick={() => setIsExpanded(true)}
@@ -98,7 +145,10 @@ const CreatePostBox = () => {
       {isExpanded && (
         <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
           <div className="flex items-center gap-2">
-            <button className="flex cursor-pointer items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+            <button
+              className="flex cursor-pointer items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+              onClick={openFilePicker}
+            >
               <ImagePlus className="text-blue-primary size-6" />
               <span className="text-md">Ảnh</span>
             </button>
@@ -133,6 +183,7 @@ const CreatePostBox = () => {
               onClick={() => {
                 setIsExpanded(false);
                 setContent("");
+                resetImages();
               }}
               className="cursor-pointer p-4"
             >
@@ -141,7 +192,7 @@ const CreatePostBox = () => {
             <Button
               className="bg-blue-primary hover:bg-blue-secondary cursor-pointer p-4 text-white"
               onClick={handleSubmit}
-              disabled={!content.trim()}
+              disabled={!canSubmit}
             >
               Đăng
             </Button>
