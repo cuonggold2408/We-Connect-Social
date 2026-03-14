@@ -29,9 +29,10 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/shared/components/ui/avatar";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { REACTION_CONFIG } from "@/features/feed/constants/config";
 import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
+import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
 
 const VISIBILITY_ICON: Record<
   PostVisibility,
@@ -48,6 +49,15 @@ interface PostCardProps {
 
 const PostCard = ({ post }: PostCardProps) => {
   const [reactionOpen, setReactionOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIndex(index);
+  }, []);
+
+  const closeLightbox = useCallback((open: boolean) => {
+    if (!open) setLightboxIndex(null);
+  }, []);
 
   const { toggleReaction } = useReaction(post.id);
 
@@ -79,8 +89,8 @@ const PostCard = ({ post }: PostCardProps) => {
         <div className="flex items-center gap-3">
           <Avatar className="size-10">
             <AvatarImage
-              src={post.author.avatarUrl ?? ""}
-              alt={post.author.username[0] ?? ""}
+              src={post.author.avatarUrl || undefined}
+              alt={post.author.username[0] ?? "User Avatar"}
             />
             <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
               {post.author.fullname?.[0] || post.author.username[0]}
@@ -115,42 +125,62 @@ const PostCard = ({ post }: PostCardProps) => {
 
       {/* Images */}
       {post.images.length > 0 && (
-        <div
-          className={cn(
-            "grid gap-0.5",
-            post.images.length === 1 && "grid-cols-1",
-            post.images.length === 2 && "grid-cols-2",
-            post.images.length >= 3 && "grid-cols-2",
-          )}
-        >
-          {post.images.slice(0, 4).map((img, i) => (
-            <div
-              key={img.id}
-              className={cn(
-                "relative overflow-hidden bg-gray-100",
-                post.images.length === 1 && "aspect-video",
-                post.images.length >= 2 && "aspect-square",
-                post.images.length === 3 && i === 0 && "row-span-2",
-              )}
-            >
-              <Image
-                src="https://images.unsplash.com/photo-1769708526549-05310c4ade1d?q=80&w=985&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                alt=""
-                width={40}
-                height={40}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+        <>
+          <div
+            className={cn(
+              "grid gap-0.5",
+              post.images.length === 1 && "grid-cols-1",
+              post.images.length === 2 && "grid-cols-2",
+              post.images.length >= 3 && "grid-cols-2",
+            )}
+          >
+            {post.images.slice(0, 4).map((img, i) => (
+              <div
+                key={img.id}
+                onClick={() => openLightbox(i)}
+                className={cn(
+                  "relative cursor-pointer overflow-hidden bg-gray-100",
+                  post.images.length === 1 && "aspect-video max-h-[500px]",
+                  post.images.length >= 2 && "aspect-square",
+                  post.images.length >= 3 && "aspect-square",
+                  post.images.length === 3 && i === 0 && "row-span-2",
+                )}
+              >
+                <Image
+                  src={img.imageUrl}
+                  alt={`Ảnh bài viết ${i + 1}`}
+                  fill
+                  sizes={
+                    post.images.length === 1
+                      ? "(max-width: 768px) 100vw, 680px"
+                      : "(max-width: 768px) 50vw, 340px"
+                  }
+                  className={cn(
+                    post.images.length === 1
+                      ? "object-contain"
+                      : "object-cover",
+                  )}
+                  loading="lazy"
+                />
 
-              {/* Overlay nếu nhiều hơn 4 ảnh */}
-              {i === 3 && post.images.length > 4 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-2xl font-bold text-white">
-                  +{post.images.length - 4}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                {/* Overlay nếu nhiều hơn 4 ảnh */}
+                {i === 3 && post.images.length > 4 && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-2xl font-bold text-white">
+                    +{post.images.length - 4}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <ImageLightBox
+            images={post.images}
+            currentIndex={lightboxIndex ?? 0}
+            open={lightboxIndex !== null}
+            onOpenChange={closeLightbox}
+            onIndexChange={setLightboxIndex}
+          />
+        </>
       )}
 
       {/* UI để hiện reaction count, comment count, share count */}

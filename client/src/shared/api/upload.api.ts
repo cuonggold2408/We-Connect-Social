@@ -43,4 +43,8 @@ export const uploadApi = {
       },
     });
   },
+
+  confirmUploads: async (keys: string[]): Promise<void> => {
+    await api.post("/upload/confirm", { keys });
+  },
 };

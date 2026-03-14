@@ -100,7 +100,10 @@ const CreatePostBox = () => {
     <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-start gap-3">
         <Avatar className="size-10">
-          <AvatarImage src={user?.avatarUrl ?? ""} alt={user?.fullName ?? ""} />
+          <AvatarImage
+            src={user?.avatarUrl || undefined}
+            alt={user?.fullName || "User Avatar"}
+          />
           <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
             {user?.fullName?.[0] || user?.username?.[0]}
           </AvatarFallback>

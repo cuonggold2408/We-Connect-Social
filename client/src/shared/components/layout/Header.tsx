@@ -36,7 +36,7 @@ import {
   AvatarImage,
 } from "@/shared/components/ui/avatar";
 import { authApi } from "@/shared/api/auth.api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const NAV_ITEMS = [
   { href: "/", label: "Trang chủ", icon: House },
@@ -50,6 +50,7 @@ const Header = () => {
   const pathname = usePathname();
   const router = useRouter();
   const clearUser = useAuthStore((s) => s.clearUser);
+  const queryClient = useQueryClient();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ const Header = () => {
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
     onSettled: () => {
+      queryClient.clear();
       clearUser();
       router.push("/login");
     },
@@ -181,8 +183,8 @@ const Header = () => {
             <DropdownMenuTrigger className="outline-none">
               <Avatar className="size-10 cursor-pointer">
                 <AvatarImage
-                  src={user?.avatarUrl ?? ""}
-                  alt={user?.fullName ?? ""}
+                  src={user?.avatarUrl || undefined}
+                  alt={user?.fullName || "User Avatar"}
                 />
                 <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
                   {user?.fullName?.[0] || user?.username?.[0]}

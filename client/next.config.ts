@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "s3.vn-hcm-1.vietnix.cloud",
+        port: "",
+      },
     ],
   },
 };

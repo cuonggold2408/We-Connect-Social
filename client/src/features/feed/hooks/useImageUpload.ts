@@ -110,6 +110,13 @@ export function useImageUpload() {
       }),
     );
 
+    const successKeys = presigned
+      .filter((_, i) => results[i].status === "fulfilled")
+      .map((p) => p.key);
+    if (successKeys.length > 0) {
+      await uploadApi.confirmUploads(successKeys);
+    }
+
     const failedIds: string[] = [];
     const urls: string[] = [];
 
