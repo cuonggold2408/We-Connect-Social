@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  PutObjectAclCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 
-interface FileMetadata {
+export interface FileMetadata {
   mimeType: string;
   fileSize: number;
 }
 
-interface PresignedUrlResult {
+export interface PresignedUrlResult {
   uploadUrl: string;
   objectUrl: string;
   key: string;
@@ -22,15 +26,15 @@ export class UploadService {
   private readonly publicBaseUrl: string;
 
   constructor(private config: ConfigService) {
-    const endpoint = this.config.getOrThrow<string>('s3.endpoint');
-    this.bucket = this.config.getOrThrow<string>('s3.bucket');
+    const endpoint = this.config.getOrThrow<string>('S3_ENDPOINT');
+    this.bucket = this.config.getOrThrow<string>('S3_BUCKET');
 
     this.s3 = new S3Client({
       endpoint,
-      region: this.config.getOrThrow<string>('s3.region'),
+      region: this.config.getOrThrow<string>('S3_REGION'),
       credentials: {
-        accessKeyId: this.config.getOrThrow<string>('s3.accessKeyId'),
-        secretAccessKey: this.config.getOrThrow<string>('s3.secretAccessKey'),
+        accessKeyId: this.config.getOrThrow<string>('S3_ACCESS_KEY'),
+        secretAccessKey: this.config.getOrThrow<string>('S3_SECRET_KEY'),
       },
       forcePathStyle: true,
     });
@@ -39,6 +43,7 @@ export class UploadService {
   }
 
   async generatePresignedUrls(
+    userId: string,
     files: FileMetadata[],
   ): Promise<PresignedUrlResult[]> {
     const MIME_TO_EXT: Record<string, string> = {
@@ -52,13 +57,12 @@ export class UploadService {
       files.map(async (file) => {
         const ext = MIME_TO_EXT[file.mimeType] || 'jpg';
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
-        const key = `posts/${date}/${randomUUID()}.${ext}`;
+        const key = `users/${userId}/posts/${date}/${randomUUID()}.${ext}`;
 
         const command = new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
           ContentType: file.mimeType,
-          ContentLength: file.fileSize,
         });
 
         const uploadUrl = await getSignedUrl(this.s3, command, {
@@ -71,6 +75,20 @@ export class UploadService {
           key,
         };
       }),
+    );
+  }
+
+  async confirmUploads(keys: string[]): Promise<void> {
+    await Promise.all(
+      keys.map((key) =>
+        this.s3.send(
+          new PutObjectAclCommand({
+            Bucket: this.bucket,
+            Key: key,
+            ACL: 'public-read',
+          }),
+        ),
+      ),
     );
   }
 }
