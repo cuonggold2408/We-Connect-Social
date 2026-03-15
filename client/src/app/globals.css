@@ -128,3 +128,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+.EmojiPickerReact {
+  --epr-emoji-size: 34px !important;
+  --epr-emoji-gap: 8px !important;
+}
+
+.twemoji-inline {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  margin: 0 0.05em;
+}

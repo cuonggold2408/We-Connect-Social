@@ -33,6 +33,8 @@ import { useCallback, useState } from "react";
 import { REACTION_CONFIG } from "@/features/feed/constants/config";
 import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
+import { CommentDialog } from "@/features/feed/ui/comment/CommentDialog";
+import { TwemojiText } from "@/shared/components/TwemojiText";
 
 const VISIBILITY_ICON: Record<
   PostVisibility,
@@ -50,6 +52,7 @@ interface PostCardProps {
 const PostCard = ({ post }: PostCardProps) => {
   const [reactionOpen, setReactionOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
 
   const openLightbox = useCallback((index: number) => {
     setLightboxIndex(index);
@@ -118,9 +121,10 @@ const PostCard = ({ post }: PostCardProps) => {
 
       {/* Content */}
       {post.content && (
-        <p className="px-4 pb-3 text-sm whitespace-pre-wrap text-gray-800">
-          {post.content}
-        </p>
+        <TwemojiText
+          text={post.content}
+          className="px-4 pb-3 text-sm whitespace-pre-wrap text-gray-800"
+        />
       )}
 
       {/* Images */}
@@ -224,9 +228,12 @@ const PostCard = ({ post }: PostCardProps) => {
           <div className="flex gap-3 text-[15px]">
             <div className="flex gap-3">
               {post.commentCount > 0 && (
-                <span className="cursor-pointer hover:underline">
+                <button
+                  onClick={() => setCommentDialogOpen(true)}
+                  className="cursor-pointer hover:underline"
+                >
                   {post.commentCount} bình luận
-                </span>
+                </button>
               )}
             </div>
 
@@ -309,7 +316,10 @@ const PostCard = ({ post }: PostCardProps) => {
           </HoverCardContent>
         </HoverCard>
 
-        <button className="flex w-full flex-1 cursor-pointer items-center justify-center gap-2 rounded-md py-2 transition-colors hover:bg-gray-100">
+        <button
+          onClick={() => setCommentDialogOpen(true)}
+          className="flex w-full flex-1 cursor-pointer items-center justify-center gap-2 rounded-md py-2 transition-colors hover:bg-gray-100"
+        >
           <MessageSquare className="h-5 w-5 text-gray-500" />
           <span className="text-sm font-semibold text-gray-500">Bình luận</span>
         </button>
@@ -319,6 +329,12 @@ const PostCard = ({ post }: PostCardProps) => {
           <span className="text-sm font-semibold text-gray-500">Chia sẻ</span>
         </button>
       </div>
+
+      <CommentDialog
+        post={post}
+        open={commentDialogOpen}
+        onOpenChange={setCommentDialogOpen}
+      />
     </article>
   );
 };

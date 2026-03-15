@@ -18,8 +18,11 @@ export interface Comment {
   id: string;
   content: string;
   author: PostAuthor;
+  parentId: string | null;
+  replyCount: number;
+  isPostAuthor: boolean;
   createdAt: string;
-  _count?: { replies: number };
+  updatedAt: string | null;
 }
 
 export interface Post {
