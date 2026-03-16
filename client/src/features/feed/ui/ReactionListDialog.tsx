@@ -117,7 +117,7 @@ export function ReactionListDialog({
         </DialogHeader>
 
         {/* Reaction list */}
-        <ScrollArea className="h-[360px]">
+        <ScrollArea className="h-90">
           <div className="space-y-1 px-4 pb-4">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (

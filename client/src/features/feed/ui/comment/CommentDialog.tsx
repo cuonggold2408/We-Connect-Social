@@ -91,8 +91,8 @@ export function CommentDialog({
     [isFetchingNextPage, hasNextPage, fetchNextPage],
   );
 
-  const handleCreateComment = (content: string) => {
-    createComment.mutate({ content });
+  const handleCreateComment = (content: string, imageUrl?: string) => {
+    createComment.mutate({ content, imageUrl });
   };
 
   const vis = VISIBILITY_LABEL[post.visibility ?? "PUBLIC"];
@@ -157,7 +157,7 @@ export function CommentDialog({
                       className={cn(
                         "relative bg-gray-100",
                         post.images.length === 1
-                          ? "aspect-video max-h-[250px]"
+                          ? "aspect-video max-h-62.5"
                           : "aspect-square",
                         post.images.length === 3 && i === 0 && "row-span-2",
                       )}
@@ -210,7 +210,7 @@ export function CommentDialog({
                             return (
                               <div
                                 key={stat.type}
-                                className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white ring-2 ring-white"
+                                className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white ring-2 ring-white"
                                 style={{ zIndex: 3 - index }}
                               >
                                 <span className="text-sm leading-none">

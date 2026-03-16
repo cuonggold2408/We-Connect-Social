@@ -22,8 +22,9 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/shared/components/ui/avatar";
-import { useImageUpload } from "../hooks/useImageUpload";
-import ImagePreviewGrid from "./ImagePreviewGrid";
+import { useImageUpload } from "@/features/feed/hooks/useImageUpload";
+import ImagePreviewGrid from "@/features/feed/ui/ImagePreviewGrid";
+import { feedKeys } from "@/features/feed/constants/queryKeys";
 
 const VISIBILITY_OPTIONS: {
   value: PostVisibility;
@@ -57,7 +58,7 @@ const CreatePostBox = () => {
   const createMutation = useMutation({
     mutationFn: postsApi.createPost,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: feedKeys.all });
     },
   });
 

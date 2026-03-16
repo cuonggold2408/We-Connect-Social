@@ -49,11 +49,11 @@ export const commentsApi = {
   updateComment: async (
     postId: string,
     commentId: string,
-    content: string,
+    payload: { content: string; imageUrl?: string | null },
   ): Promise<Comment> => {
     const { data } = await api.patch<ApiResponse<Comment>>(
       `/posts/${postId}/comments/${commentId}`,
-      { content },
+      payload,
     );
     return data.data!;
   },

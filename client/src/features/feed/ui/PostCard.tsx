@@ -330,11 +330,13 @@ const PostCard = ({ post }: PostCardProps) => {
         </button>
       </div>
 
-      <CommentDialog
-        post={post}
-        open={commentDialogOpen}
-        onOpenChange={setCommentDialogOpen}
-      />
+      {commentDialogOpen && (
+        <CommentDialog
+          post={post}
+          open={commentDialogOpen}
+          onOpenChange={setCommentDialogOpen}
+        />
+      )}
     </article>
   );
 };

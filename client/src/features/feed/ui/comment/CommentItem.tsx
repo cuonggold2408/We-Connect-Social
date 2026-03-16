@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   MoreHorizontal,
   Loader2,
@@ -8,6 +8,8 @@ import {
   Trash2,
   ChevronRight,
   ChevronDown,
+  Camera,
+  X,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -37,17 +39,76 @@ import {
   useReplies,
   useCreateComment,
   useDeleteComment,
-  useUpdateComment,
 } from "@/features/feed/hooks/useComments";
+import { useEditComment } from "@/features/feed/hooks/useEditComment";
 import { CommentInput } from "@/features/feed/ui/comment/CommentInput";
 import type { Comment } from "@/features/feed/types/post";
 import { TwemojiText } from "@/shared/components/TwemojiText";
+import Image from "next/image";
+import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
+
+/* ─── Action Menu (tái sử dụng cho cả text comment và image-only) ── */
+
+interface CommentActionMenuProps {
+  canEdit: boolean;
+  canDelete: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  triggerClassName?: string;
+}
+
+function CommentActionMenu({
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+  triggerClassName,
+}: CommentActionMenuProps) {
+  if (!canEdit && !canDelete) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "shrink-0 cursor-pointer rounded-full p-1 hover:bg-gray-200",
+            triggerClassName,
+          )}
+        >
+          <MoreHorizontal className="h-4 w-4 text-gray-400" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" sideOffset={4}>
+        {canEdit && (
+          <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+            <Pencil className="h-4 w-4" />
+            Chỉnh sửa
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={onDelete}
+            className="cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+            Xóa
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* ─── CommentItem ─── */
 
 interface CommentItemProps {
   comment: Comment;
   postId: string;
   postAuthorId: string;
   isReply?: boolean;
+  onReplyTo?: (username: string) => void;
 }
 
 export const CommentItem = ({
@@ -55,20 +116,19 @@ export const CommentItem = ({
   postId,
   postAuthorId,
   isReply = false,
+  onReplyTo,
 }: CommentItemProps) => {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(comment.content);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [replyMention, setReplyMention] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const isAuthor = user?.id === comment.author.id;
   const isPostOwner = user?.id === postAuthorId;
   const canDelete = isAuthor || isPostOwner;
   const canEdit = isAuthor;
-
-  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     data: repliesData,
@@ -80,15 +140,48 @@ export const CommentItem = ({
 
   const createComment = useCreateComment(postId);
   const deleteComment = useDeleteComment(postId);
-  const updateComment = useUpdateComment(postId);
 
+  const {
+    isEditing,
+    editContent,
+    setEditContent,
+    editImageUrl,
+    editImagePreview,
+    isUploading: isUploadingEditImage,
+    textareaRef: editTextareaRef,
+    fileInputRef,
+    startEditing,
+    resetEditState,
+    handleEditKeyDown,
+    handleImageSelect,
+    removeImage,
+  } = useEditComment(postId, comment);
+
+  const isDeleting = deleteComment.isPending;
   const replies = repliesData?.pages.flatMap((p) => p.data) ?? [];
+  const isImageOnly = !comment.content?.trim() && !!comment.imageUrl;
 
-  const handleReply = (content: string) => {
+  const mentionMatch = isReply ? comment.content.match(/^@(\S+)\s/) : null;
+  const displayContent = mentionMatch
+    ? comment.content.slice(mentionMatch[0].length)
+    : comment.content;
+
+  const handleReply = (content: string, imageUrl?: string) => {
     createComment.mutate(
-      { content, parentId: comment.parentId ?? comment.id },
-      { onSuccess: () => setShowReplyInput(false) },
+      { content, parentId: comment.parentId ?? comment.id, imageUrl },
+      {
+        onSuccess: () => {
+          setShowReplyInput(false);
+          setReplyMention(null);
+        },
+      },
     );
+  };
+
+  const handleReplyToReply = (username: string) => {
+    setReplyMention(username);
+    setShowReplyInput(true);
+    setShowReplies(true);
   };
 
   const handleConfirmDelete = () => {
@@ -96,43 +189,14 @@ export const CommentItem = ({
     deleteComment.mutate(comment.id);
   };
 
-  const handleEditSubmit = () => {
-    const trimmed = editContent.trim();
-    if (!trimmed || trimmed === comment.content) {
-      setIsEditing(false);
-      return;
-    }
-    updateComment.mutate(
-      { commentId: comment.id, content: trimmed },
-      { onSuccess: () => setIsEditing(false) },
-    );
-  };
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.nativeEvent.isComposing) return;
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleEditSubmit();
-    }
-    if (e.key === "Escape") {
-      setIsEditing(false);
-      setEditContent(comment.content);
-    }
-  };
-
-  useEffect(() => {
-    if (isEditing && editTextareaRef.current) {
-      const el = editTextareaRef.current;
-      const len = el.value.length;
-      el.selectionStart = len;
-      el.selectionEnd = len;
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-    }
-  }, [isEditing]);
-
   return (
-    <div className={cn("flex gap-2", isReply && "ml-10")}>
+    <div
+      className={cn(
+        "flex gap-2",
+        isReply && "ml-10",
+        isDeleting && "pointer-events-none opacity-50",
+      )}
+    >
       <Avatar className="size-8 shrink-0">
         <AvatarImage src={comment.author.avatarUrl || undefined} />
         <AvatarFallback className="bg-blue-primary text-xs font-bold text-white">
@@ -141,88 +205,159 @@ export const CommentItem = ({
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <div className="group/comment flex items-start gap-1">
-          <div className="rounded-2xl bg-gray-100 px-3 py-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-semibold text-gray-900">
-                {comment.author.fullname || comment.author.username}
-              </span>
-              {comment.isPostAuthor && (
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
-                  Tác giả
+        <div className="group/comment flex flex-col items-start">
+          <div className="flex max-w-[calc(100%-2rem)] items-center gap-2">
+            <div
+              className={cn(
+                "w-fit rounded-2xl px-3 py-2",
+                !isImageOnly && "bg-gray-100",
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-semibold text-gray-900">
+                  {comment.author.fullname || comment.author.username}
                 </span>
+                {comment.isPostAuthor && (
+                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                    Tác giả
+                  </span>
+                )}
+              </div>
+
+              {isEditing ? (
+                <div className="mt-1">
+                  <textarea
+                    ref={editTextareaRef}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    rows={1}
+                    maxLength={2000}
+                    className="w-full resize-none bg-transparent text-sm text-gray-800 outline-none"
+                    onInput={(e) => {
+                      const el = e.target as HTMLTextAreaElement;
+                      el.style.height = "auto";
+                      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                    }}
+                  />
+
+                  {(editImageUrl || editImagePreview) && (
+                    <div className="relative my-1 inline-block">
+                      <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                        <Image
+                          src={editImagePreview || editImageUrl || ""}
+                          alt="Preview"
+                          fill
+                          className="object-cover"
+                        />
+                        {isUploadingEditImage && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={removeImage}
+                        disabled={isUploadingEditImage}
+                        className="absolute -top-1.5 -right-1.5 cursor-pointer rounded-full bg-gray-700 p-0.5 text-white hover:bg-gray-600 disabled:opacity-50"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-1 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                      <span>Enter để lưu</span>
+                      <span>·</span>
+                      <button
+                        onClick={resetEditState}
+                        className="cursor-pointer hover:underline"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingEditImage}
+                        className="cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        <Camera className="h-4 w-4 text-gray-500" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {mentionMatch ? (
+                    <p className="text-sm whitespace-pre-wrap text-gray-800">
+                      <span className="font-semibold text-blue-600">
+                        @{mentionMatch[1]}
+                      </span>{" "}
+                      <TwemojiText
+                        text={displayContent}
+                        as="span"
+                        className="text-sm text-gray-800"
+                      />
+                    </p>
+                  ) : (
+                    <TwemojiText
+                      text={comment.content}
+                      className="text-sm whitespace-pre-wrap text-gray-800"
+                    />
+                  )}
+                </>
               )}
             </div>
 
-            {isEditing ? (
-              <div className="mt-1">
-                <textarea
-                  ref={editTextareaRef}
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  onKeyDown={handleEditKeyDown}
-                  autoFocus
-                  rows={1}
-                  maxLength={2000}
-                  className="w-full resize-none bg-transparent text-sm text-gray-800 outline-none"
-                  onInput={(e) => {
-                    const el = e.target as HTMLTextAreaElement;
-                    el.style.height = "auto";
-                    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-                  }}
-                />
-                <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                  <span>Enter để lưu</span>
-                  <span>·</span>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setEditContent(comment.content);
-                    }}
-                    className="cursor-pointer hover:underline"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <TwemojiText
-                text={comment.content}
-                className="text-sm whitespace-pre-wrap text-gray-800"
+            {!isEditing && !isImageOnly && (
+              <CommentActionMenu
+                canEdit={canEdit}
+                canDelete={canDelete}
+                onEdit={startEditing}
+                onDelete={() => setShowDeleteConfirm(true)}
+                triggerClassName="mt-2 opacity-0 transition-opacity group-hover/comment:opacity-100"
               />
             )}
           </div>
 
-          {/* Edit, Delete Comment */}
-          {(canEdit || canDelete) && !isEditing && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="mt-2 shrink-0 cursor-pointer rounded-full p-1 opacity-0 transition-opacity group-hover/comment:opacity-100 hover:bg-gray-200">
-                  <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" sideOffset={4}>
-                {canEdit && (
-                  <DropdownMenuItem
-                    onClick={() => setIsEditing(true)}
-                    className="cursor-pointer"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Chỉnh sửa
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Xóa
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {!isEditing && comment.imageUrl && (
+            <div className="group/image relative mt-1.5 ml-1 inline-block">
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                className="block text-left"
+              >
+                <Image
+                  src={comment.imageUrl}
+                  alt="Ảnh bình luận"
+                  width={280}
+                  height={280}
+                  className="max-h-70 w-auto cursor-pointer rounded-lg object-cover transition-opacity hover:opacity-95"
+                />
+              </button>
+
+              {isImageOnly && (
+                <CommentActionMenu
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={startEditing}
+                  onDelete={() => setShowDeleteConfirm(true)}
+                  triggerClassName="absolute top-1/2 -right-10 z-10 mt-2 -translate-y-1/2 p-1.5"
+                />
+              )}
+            </div>
           )}
         </div>
 
@@ -232,7 +367,18 @@ export const CommentItem = ({
             {comment.updatedAt && <span className="italic">đã chỉnh sửa</span>}
             {!isReply && (
               <button
-                onClick={() => setShowReplyInput(!showReplyInput)}
+                onClick={() => {
+                  setShowReplyInput(!showReplyInput);
+                  setReplyMention(null);
+                }}
+                className="cursor-pointer font-semibold hover:underline"
+              >
+                Trả lời
+              </button>
+            )}
+            {isReply && onReplyTo && (
+              <button
+                onClick={() => onReplyTo(comment.author.username)}
                 className="cursor-pointer font-semibold hover:underline"
               >
                 Trả lời
@@ -259,7 +405,6 @@ export const CommentItem = ({
           </button>
         )}
 
-        {/* Danh sách replies */}
         {showReplies && !isReply && (
           <div className="mt-2 space-y-3">
             {isLoadingReplies && (
@@ -275,6 +420,7 @@ export const CommentItem = ({
                 postId={postId}
                 postAuthorId={postAuthorId}
                 isReply
+                onReplyTo={handleReplyToReply}
               />
             ))}
             {hasMoreReplies && (
@@ -296,14 +442,15 @@ export const CommentItem = ({
           </div>
         )}
 
-        {/* Input để trả lời */}
         {showReplyInput && !isReply && (
           <div className="mt-2 ml-10">
             <CommentInput
+              key={replyMention ?? "default"}
               onSubmit={handleReply}
               isPending={createComment.isPending}
               placeholder={`Trả lời ${comment.author.fullname || comment.author.username}...`}
               autoFocus
+              initialValue={replyMention ? `@${replyMention} ` : undefined}
             />
           </div>
         )}
@@ -325,13 +472,31 @@ export const CommentItem = ({
             <AlertDialogAction
               variant="destructive"
               onClick={handleConfirmDelete}
+              disabled={isDeleting}
               className="cursor-pointer"
             >
-              Xóa
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xóa...
+                </span>
+              ) : (
+                "Xóa"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {comment.imageUrl && (
+        <ImageLightBox
+          images={[{ id: comment.id, imageUrl: comment.imageUrl }]}
+          currentIndex={0}
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+          onIndexChange={() => {}}
+        />
+      )}
     </div>
   );
 };

@@ -17,6 +17,7 @@ export interface PostImage {
 export interface Comment {
   id: string;
   content: string;
+  imageUrl: string | null;
   author: PostAuthor;
   parentId: string | null;
   replyCount: number;
@@ -53,6 +54,7 @@ export interface CreatePostDto {
 export interface CreateCommentDto {
   content: string;
   parentId?: string;
+  imageUrl?: string;
 }
 
 export interface ReactionUser {

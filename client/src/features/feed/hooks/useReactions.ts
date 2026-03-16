@@ -6,6 +6,7 @@ import type {
   Post,
   PaginatedResponse,
 } from "@/features/feed/types/post";
+import { feedKeys } from "@/features/feed/constants/queryKeys";
 
 type FeedData = InfiniteData<PaginatedResponse<Post>>;
 
@@ -63,13 +64,12 @@ function buildOptimisticPost(post: Post, nextType: ReactionType | null): Post {
 
 export function useReaction(postId: string) {
   const queryClient = useQueryClient();
-  const feedKey = ["feed"];
 
   const applyOptimistic = (nextType: ReactionType | null): ReactionContext => {
-    const previousFeed = queryClient.getQueryData<FeedData>(feedKey);
+    const previousFeed = queryClient.getQueryData<FeedData>(feedKeys.all);
 
     if (previousFeed) {
-      queryClient.setQueryData<FeedData>(feedKey, (old) =>
+      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
         old
           ? updatePostInFeed(old, postId, (p) =>
               buildOptimisticPost(p, nextType),
@@ -83,14 +83,14 @@ export function useReaction(postId: string) {
 
   const rollback = (context: ReactionContext | undefined) => {
     if (context?.previousFeed) {
-      queryClient.setQueryData(feedKey, context.previousFeed);
+      queryClient.setQueryData(feedKeys.all, context.previousFeed);
     }
   };
 
   const reactMutation = useMutation({
     mutationFn: (type: ReactionType) => reactionsApi.react(postId, type),
     onMutate: async (type) => {
-      await queryClient.cancelQueries({ queryKey: feedKey });
+      await queryClient.cancelQueries({ queryKey: feedKeys.all });
       return applyOptimistic(type);
     },
     onError: (_err, _type, context) => rollback(context),
@@ -99,7 +99,7 @@ export function useReaction(postId: string) {
   const removeMutation = useMutation({
     mutationFn: () => reactionsApi.removeReaction(postId),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: feedKey });
+      await queryClient.cancelQueries({ queryKey: feedKeys.all });
       return applyOptimistic(null);
     },
     onError: (_err, _vars, context) => rollback(context),

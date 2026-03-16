@@ -11,18 +11,13 @@ import type {
   PaginatedResponse,
 } from "@/features/feed/types/post";
 import { toast } from "sonner";
+import { commentKeys, feedKeys } from "@/features/feed/constants/queryKeys";
 
 type FeedData = InfiniteData<PaginatedResponse<Post>>;
 type CommentsData = InfiniteData<PaginatedResponse<Comment>>;
 
 const COMMENTS_LIMIT = 10;
 const REPLIES_LIMIT = 5;
-
-const commentKeys = {
-  byPost: (postId: string) => ["comments", postId] as const,
-  replies: (postId: string, commentId: string) =>
-    ["comments", postId, "replies", commentId] as const,
-};
 
 function updatePostInFeed(
   feed: FeedData,
@@ -70,11 +65,13 @@ export function useReplies(postId: string, commentId: string, enabled = false) {
 
 export function useCreateComment(postId: string) {
   const queryClient = useQueryClient();
-  const feedKey = ["feed"];
 
   return useMutation({
-    mutationFn: (dto: { content: string; parentId?: string }) =>
-      commentsApi.createComment(postId, dto),
+    mutationFn: (dto: {
+      content: string;
+      parentId?: string;
+      imageUrl?: string;
+    }) => commentsApi.createComment(postId, dto),
 
     onSuccess: (newComment) => {
       if (!newComment.parentId) {
@@ -127,7 +124,7 @@ export function useCreateComment(postId: string) {
         );
       }
 
-      queryClient.setQueryData<FeedData>(feedKey, (old) =>
+      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
         old
           ? updatePostInFeed(old, postId, (p) => ({
               ...p,
@@ -136,12 +133,17 @@ export function useCreateComment(postId: string) {
           : old,
       );
     },
+
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể tạo bình luận",
+      );
+    },
   });
 }
 
 export function useDeleteComment(postId: string) {
   const queryClient = useQueryClient();
-  const feedKey = ["feed"];
 
   return useMutation({
     mutationFn: (commentId: string) =>
@@ -224,13 +226,19 @@ export function useDeleteComment(postId: string) {
         });
       }
 
-      queryClient.setQueryData<FeedData>(feedKey, (old) =>
+      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
         old
           ? updatePostInFeed(old, postId, (p) => ({
               ...p,
               commentCount: Math.max(0, p.commentCount - totalDeleted),
             }))
           : old,
+      );
+    },
+
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể xóa bình luận",
       );
     },
   });
@@ -240,8 +248,15 @@ export function useUpdateComment(postId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: { commentId: string; content: string }) =>
-      commentsApi.updateComment(postId, params.commentId, params.content),
+    mutationFn: (params: {
+      commentId: string;
+      content: string;
+      imageUrl?: string | null;
+    }) =>
+      commentsApi.updateComment(postId, params.commentId, {
+        content: params.content,
+        imageUrl: params.imageUrl,
+      }),
 
     onSuccess: (updatedComment) => {
       const updateInPages = (old: CommentsData | undefined) => {

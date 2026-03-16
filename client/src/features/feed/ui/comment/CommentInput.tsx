@@ -15,12 +15,16 @@ import EmojiPicker, {
   EmojiStyle,
   Theme,
 } from "emoji-picker-react";
+import { uploadSingleImage } from "@/shared/helpers/upload-single-image";
+import { toast } from "sonner";
+import { ALLOWED_TYPES, MAX_FILE_SIZE } from "@/shared/helpers/constants";
 
 interface CommentInputProps {
   onSubmit: (content: string, imageUrl?: string) => void;
   isPending: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  initialValue?: string;
 }
 
 export const CommentInput = ({
@@ -28,17 +32,35 @@ export const CommentInput = ({
   isPending,
   placeholder = "Viết bình luận...",
   autoFocus = false,
+  initialValue,
 }: CommentInputProps) => {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialValue ?? "");
   const [showEmojis, setShowEmojis] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  useEffect(() => {
+    if (initialValue && textareaRef.current) {
+      const len = textareaRef.current.value.length;
+      textareaRef.current.selectionStart = len;
+      textareaRef.current.selectionEnd = len;
+      textareaRef.current.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!showEmojis) return;
@@ -56,10 +78,27 @@ export const CommentInput = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojis]);
 
-  const handleSubmit = () => {
+  const isBusy = isPending || isUploading;
+
+  const handleSubmit = async () => {
     const trimmed = content.trim();
-    if ((!trimmed && !imagePreview) || isPending) return;
-    onSubmit(trimmed, imagePreview ?? undefined);
+    if ((!trimmed && !imageFile) || isBusy) return;
+
+    let uploadedUrl: string | undefined;
+
+    if (imageFile) {
+      setIsUploading(true);
+      try {
+        uploadedUrl = await uploadSingleImage(imageFile);
+      } catch {
+        toast.error("Upload ảnh thất bại, vui lòng thử lại");
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+
+    onSubmit(trimmed, uploadedUrl);
     setContent("");
     setImagePreview(null);
     setImageFile(null);
@@ -104,9 +143,17 @@ export const CommentInput = ({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 5 * 1024 * 1024) return;
 
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("Chỉ hỗ trợ định dạng JPEG, PNG, GIF, WebP");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Dung lượng ảnh tối đa 10MB");
+      return;
+    }
+
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     if (e.target) e.target.value = "";
@@ -152,10 +199,16 @@ export const CommentInput = ({
                   fill
                   className="object-cover"
                 />
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </div>
+                )}
               </div>
               <button
                 onClick={removeImage}
-                className="absolute -top-1.5 -right-1.5 rounded-full bg-gray-700 p-0.5 text-white hover:bg-gray-600"
+                disabled={isBusy}
+                className="absolute -top-1.5 -right-1.5 rounded-full bg-gray-700 p-0.5 text-white hover:bg-gray-600 disabled:opacity-50"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -178,14 +231,15 @@ export const CommentInput = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-200"
+                disabled={isBusy}
+                className="cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-50"
               >
                 <Camera className="h-4 w-4 text-gray-500" />
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp"
                 onChange={handleImageSelect}
                 className="hidden"
               />
@@ -193,10 +247,10 @@ export const CommentInput = ({
 
             <button
               onClick={handleSubmit}
-              disabled={!hasContent || isPending}
+              disabled={!hasContent || isBusy}
               className="rounded-full p-1.5 text-blue-500 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-300"
             >
-              {isPending ? (
+              {isBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />

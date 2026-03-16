@@ -4,10 +4,14 @@ import { useCallback, useEffect } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image from "next/image";
-import type { PostImage } from "@/features/feed/types/post";
+
+export interface LightboxImage {
+  id: string;
+  imageUrl: string;
+}
 
 interface ImageLightBoxProps {
-  images: PostImage[];
+  images: LightboxImage[];
   currentIndex: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
