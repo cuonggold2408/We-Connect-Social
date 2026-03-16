@@ -13,17 +13,19 @@ export class CommentsRepository {
   };
 
   async create(data: {
-    content: string;
+    content?: string;
     authorId: string;
     postId: string;
     parentId?: string;
+    imageUrl?: string;
   }) {
     return this.prisma.comment.create({
       data: {
-        content: data.content,
+        content: data.content || '',
         authorId: data.authorId,
         postId: data.postId,
         parentId: data.parentId || null,
+        imageUrl: data.imageUrl || null,
       },
       include: {
         author: { select: this.authorSelect },
@@ -42,10 +44,14 @@ export class CommentsRepository {
     });
   }
 
-  async update(id: string, content: string) {
+  async update(id: string, content: string, imageUrl?: string | null) {
     return this.prisma.comment.update({
       where: { id },
-      data: { content, updatedAt: new Date() },
+      data: {
+        content,
+        updatedAt: new Date(),
+        ...(imageUrl !== undefined && { imageUrl }),
+      },
       include: {
         author: { select: this.authorSelect },
         _count: { select: { replies: true } },

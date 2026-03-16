@@ -21,7 +21,8 @@ export class CommentsService {
   private toResponseDto(
     comment: {
       id: string;
-      content: string;
+      content?: string | null;
+      imageUrl?: string | null;
       author: {
         id: string;
         username: string;
@@ -38,6 +39,7 @@ export class CommentsService {
     return new CommentResponseDto({
       id: comment.id,
       content: comment.content,
+      imageUrl: comment.imageUrl,
       author: comment.author,
       parentId: comment.parentId,
       replyCount: comment._count.replies,
@@ -70,11 +72,16 @@ export class CommentsService {
       }
     }
 
+    if (!dto.content && !dto.imageUrl) {
+      throw new ForbiddenException('Bình luận phải có nội dung hoặc ảnh');
+    }
+
     const comment = await this.commentsRepository.create({
       content: dto.content,
       authorId: userId,
       postId,
       parentId: dto.parentId,
+      imageUrl: dto.imageUrl,
     });
 
     await this.counterQueue.incrementCounter(postId, 'commentCount', 1);
@@ -92,6 +99,11 @@ export class CommentsService {
     if (!comment) {
       throw new NotFoundException('Bình luận không tồn tại');
     }
+
+    if (comment.postId !== postId) {
+      throw new ForbiddenException('Bình luận không thuộc bài viết này');
+    }
+
     if (comment.authorId !== userId) {
       throw new ForbiddenException(
         'Bạn không có quyền chỉnh sửa bình luận này',
@@ -103,9 +115,16 @@ export class CommentsService {
       throw new NotFoundException('Bài viết không tồn tại');
     }
 
+    const content = dto.content !== undefined ? dto.content : comment.content;
+
+    if (!content?.trim() && dto.imageUrl === null) {
+      throw new ForbiddenException('Bình luận phải có nội dung hoặc ảnh');
+    }
+
     const updated = await this.commentsRepository.update(
       commentId,
-      dto.content,
+      content || '',
+      dto.imageUrl,
     );
     return this.toResponseDto(updated, post.authorId);
   }
@@ -114,6 +133,10 @@ export class CommentsService {
     const comment = await this.commentsRepository.findById(commentId);
     if (!comment) {
       throw new NotFoundException('Bình luận không tồn tại');
+    }
+
+    if (comment.postId !== postId) {
+      throw new ForbiddenException('Bình luận không thuộc bài viết này');
     }
 
     const post = await this.postsRepository.findById(postId);

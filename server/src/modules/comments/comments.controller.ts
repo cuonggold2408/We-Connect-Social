@@ -6,7 +6,6 @@ import {
   Delete,
   Param,
   Body,
-  Req,
   Query,
   HttpCode,
   HttpStatus,
@@ -15,8 +14,8 @@ import {
 import { CommentsService } from '@modules/comments/comments.service';
 import { CreateCommentDto } from '@modules/comments/dto/request/create-comment.dto';
 import { UpdateCommentDto } from '@modules/comments/dto/request/update-comment.dto';
+import { CurrentUser } from '@/shared/decorators/current-user.decorator';
 import { Throttle } from '@nestjs/throttler';
-import { Request } from '@nestjs/common';
 
 @Controller('posts/:postId/comments')
 export class CommentsController {
@@ -28,11 +27,8 @@ export class CommentsController {
     @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.commentsService.getComments(
-      postId,
-      cursor,
-      Number(limit) || 10,
-    );
+    const parsedLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+    return this.commentsService.getComments(postId, cursor, parsedLimit);
   }
 
   @Get(':commentId/replies')
@@ -42,49 +38,57 @@ export class CommentsController {
     @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
   ) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 5, 1), 50);
     return this.commentsService.getReplies(
       postId,
       commentId,
       cursor,
-      Number(limit) || 5,
+      parsedLimit,
     );
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({
+    short: { ttl: 60000, limit: 10 },
+    medium: { ttl: 60000, limit: 10 },
+    long: { ttl: 60000, limit: 10 },
+  })
   async createComment(
     @Param('postId', ParseUUIDPipe) postId: string,
     @Body() dto: CreateCommentDto,
-    @Req() req: Request,
+    @CurrentUser('id') userId: string,
   ) {
-    const userId = req['user'].id as string;
     return this.commentsService.createComment(userId, postId, dto);
   }
 
+  @Patch(':commentId')
   @Throttle({
     short: { ttl: 60000, limit: 5 },
     medium: { ttl: 60000, limit: 5 },
     long: { ttl: 60000, limit: 5 },
   })
-  @Patch(':commentId')
   async updateComment(
     @Param('postId', ParseUUIDPipe) postId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
     @Body() dto: UpdateCommentDto,
-    @Req() req: Request,
+    @CurrentUser('id') userId: string,
   ) {
-    const userId = req['user'].id as string;
     return this.commentsService.updateComment(userId, postId, commentId, dto);
   }
 
   @Delete(':commentId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({
+    short: { ttl: 60000, limit: 10 },
+    medium: { ttl: 60000, limit: 10 },
+    long: { ttl: 60000, limit: 10 },
+  })
   async deleteComment(
     @Param('postId', ParseUUIDPipe) postId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
-    @Req() req: Request,
+    @CurrentUser('id') userId: string,
   ) {
-    const userId = req['user'].id as string;
     await this.commentsService.deleteComment(userId, postId, commentId);
   }
 }

@@ -9,7 +9,8 @@ class CommentAuthorDto {
 
 export class CommentResponseDto {
   @Expose() id: string;
-  @Expose() content: string;
+  @Expose() content: string | null;
+  @Expose() imageUrl: string | null;
 
   @Expose()
   @Type(() => CommentAuthorDto)

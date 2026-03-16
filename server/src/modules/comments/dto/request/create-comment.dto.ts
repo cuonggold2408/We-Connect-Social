@@ -1,20 +1,26 @@
+import { Transform } from 'class-transformer';
 import {
-  IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   MaxLength,
 } from 'class-validator';
 
 export class CreateCommentDto {
-  @IsNotEmpty({ message: 'Nội dung bình luận không được để trống' })
+  @Transform(({ value }: { value: string }) => value?.trim() || '')
   @IsString()
+  @IsOptional()
   @MaxLength(2000, {
     message: 'Nội dung bình luận không được vượt quá 2000 ký tự',
   })
-  content: string;
+  content?: string;
 
   @IsOptional()
   @IsUUID('all', { message: 'Parent ID không hợp lệ' })
   parentId?: string;
+
+  @IsOptional()
+  @IsUrl({ max_allowed_length: 500 }, { message: 'URL ảnh không hợp lệ' })
+  imageUrl?: string;
 }

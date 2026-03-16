@@ -172,7 +172,6 @@ model Post {
   @@index([authorId, createdAt(sort: Desc)])
   @@index([visibility, reactionCount(sort: Desc)])
   @@index([createdAt])
-  
   @@map("posts")
 }
 
@@ -202,15 +201,17 @@ model Reaction {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  @@unique([userId, postId])
   @@index([postId, type])
   @@index([postId, createdAt(sort: Desc)])
-  @@unique([userId, postId])
   @@map("reactions")
 }
 
 model Comment {
   id      String @id @default(uuid(7)) @db.Uuid
   content String @db.Text
+
+  imageUrl String? @map("image_url") @db.VarChar(500)
 
   authorId String @map("author_id") @db.Uuid
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -233,18 +234,18 @@ model Comment {
 }
 
 model Friendship {
-  id         String           @id @default(uuid(7)) @db.Uuid
-  senderId   String           @map("sender_id") @db.Uuid
-  sender     User             @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid(7)) @db.Uuid
+  senderId String @map("sender_id") @db.Uuid
+  sender   User   @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
 
-  receiverId String           @map("receiver_id") @db.Uuid
-  receiver   User             @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId String @map("receiver_id") @db.Uuid
+  receiver   User   @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
 
-  status     FriendshipStatus @default(PENDING)
+  status FriendshipStatus @default(PENDING)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @map("updated_at") @db.Timestamptz(6)
-  
+
   @@unique([senderId, receiverId])
   @@index([receiverId])
   @@map("friendships")
