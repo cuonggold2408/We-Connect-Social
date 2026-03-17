@@ -352,27 +352,6 @@ export const CommentItem = ({
                   </>
                 )}
               </div>
-
-              {/* Reaction badge */}
-              {comment.reactionCount > 0 && !isEditing && (
-                <ReactionListDialog
-                  targetType="comment"
-                  targetId={comment.id}
-                  stats={comment.stats ?? []}
-                  totalCount={comment.reactionCount}
-                >
-                  <button className="absolute right-0 -bottom-2.5 z-10 flex cursor-pointer items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md">
-                    {topReactions?.map((stat) => (
-                      <span key={stat.type} className="text-xs leading-none">
-                        {REACTION_CONFIG[stat.type].icon}
-                      </span>
-                    ))}
-                    <span className="ml-0.5 text-[11px] font-medium text-gray-500">
-                      {comment.reactionCount}
-                    </span>
-                  </button>
-                </ReactionListDialog>
-              )}
             </div>
 
             {!isEditing && !isImageOnly && (
@@ -493,6 +472,27 @@ export const CommentItem = ({
               >
                 Trả lời
               </button>
+            )}
+
+            {/* Reaction badge */}
+            {comment.reactionCount > 0 && !isEditing && (
+              <ReactionListDialog
+                targetType="comment"
+                targetId={comment.id}
+                stats={comment.stats ?? []}
+                totalCount={comment.reactionCount}
+              >
+                <button className="flex cursor-pointer items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md">
+                  {topReactions?.map((stat) => (
+                    <span key={stat.type} className="text-xs leading-none">
+                      {REACTION_CONFIG[stat.type].icon}
+                    </span>
+                  ))}
+                  <span className="ml-0.5 text-[11px] font-medium text-gray-500">
+                    {comment.reactionCount}
+                  </span>
+                </button>
+              </ReactionListDialog>
             )}
           </div>
         )}

@@ -248,7 +248,7 @@ export const CommentInput = ({
             <button
               onClick={handleSubmit}
               disabled={!hasContent || isBusy}
-              className="rounded-full p-1.5 text-blue-500 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-300"
+              className="cursor-pointer rounded-full p-1.5 text-blue-500 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-300"
             >
               {isBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

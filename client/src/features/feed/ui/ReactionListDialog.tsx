@@ -97,7 +97,7 @@ export function ReactionListDialog({
                   key={tab.key ?? "ALL"}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    "relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
+                    "relative flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
                     activeTab === tab.key
                       ? "text-blue-600"
                       : "text-gray-500 hover:text-gray-700",
@@ -134,7 +134,7 @@ export function ReactionListDialog({
               : reactions.map((reaction) => (
                   <div
                     key={reaction.id}
-                    className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
+                    className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
                   >
                     <div className="relative">
                       <Avatar className="size-10">
