@@ -46,7 +46,7 @@ export class CounterQueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   private readonly BATCH_SIZE = 50;
 
-  private async flushToDatabase() {
+  private async flushPostCounters() {
     const pendingPostIds = await this.counterQueue.popPendingPostIds(1000);
     if (pendingPostIds.length === 0) return;
 
@@ -110,6 +110,57 @@ export class CounterQueueProcessor implements OnModuleInit, OnModuleDestroy {
         `Flush failed for ${errors.length} posts. Data restored to Redis.`,
       );
     }
+  }
+
+  private async flushCommentCounters() {
+    const pendingCommentIds =
+      await this.counterQueue.popPendingCommentIds(1000);
+    if (pendingCommentIds.length === 0) return;
+
+    this.logger.debug(
+      `Flushing reaction counters for ${pendingCommentIds.length} comments`,
+    );
+
+    const errors: string[] = [];
+    for (let i = 0; i < pendingCommentIds.length; i += this.BATCH_SIZE) {
+      const chunk = pendingCommentIds.slice(i, i + this.BATCH_SIZE);
+      const updatePromises = chunk.map(async (commentId) => {
+        const delta =
+          await this.counterQueue.getAndResetCommentCounter(commentId);
+        if (delta === 0) return;
+
+        try {
+          await this.prisma.comment.update({
+            where: { id: commentId },
+            data: { reactionCount: { increment: delta } },
+          });
+        } catch (error) {
+          this.logger.error(`Failed to flush comment ${commentId}`, error);
+
+          errors.push(commentId);
+          const pipeline = this.counterQueue.redis.pipeline();
+          pipeline.incrby(
+            this.counterQueue.commentCounterKey(commentId),
+            delta,
+          );
+          pipeline.sadd(this.counterQueue.pendingCommentsSetKey, commentId);
+          await pipeline.exec();
+        }
+      });
+
+      await Promise.allSettled(updatePromises);
+    }
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Flush failed for ${errors.length} comments. Data restored to Redis.`,
+      );
+    }
+  }
+
+  private async flushToDatabase() {
+    await this.flushPostCounters();
+    await this.flushCommentCounters();
   }
 
   async onModuleDestroy() {

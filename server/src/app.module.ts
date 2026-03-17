@@ -16,6 +16,7 @@ import { FeedCacheModule } from '@/shared/cache/feed-cache.module';
 import { ReactionsModule } from '@/modules/reactions/reactions.module';
 import { UploadModule } from '@/modules/upload/upload.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { CommentReactionsModule } from './modules/comment-reactions/comment-reactions.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CommentsModule } from './modules/comments/comments.module';
     ReactionsModule,
     UploadModule,
     CommentsModule,
+    CommentReactionsModule,
   ],
   controllers: [AppController],
   providers: [

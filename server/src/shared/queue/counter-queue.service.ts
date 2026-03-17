@@ -20,6 +20,11 @@ export class CounterQueueService implements OnModuleInit, OnModuleDestroy {
     return `counter:${postId}:${field}`;
   }
 
+  readonly pendingCommentsSetKey = 'counter:pending_comments';
+  commentCounterKey(commentId: string) {
+    return `counter:comment:${commentId}:reactionCount`;
+  }
+
   constructor(private configService: ConfigService) {
     const redisConfig = {
       host: this.configService.getOrThrow('REDIS_HOST'),
@@ -75,6 +80,30 @@ export class CounterQueueService implements OnModuleInit, OnModuleDestroy {
 
   async getAndResetCounter(postId: string, field: string): Promise<number> {
     const key = this.counterKey(postId, field);
+    const value = await this.redis.getdel(key);
+    return parseInt(value || '0', 10);
+  }
+
+  async incrementCommentReactionCounter(
+    commentId: string,
+    delta: number,
+  ): Promise<void> {
+    const key = this.commentCounterKey(commentId);
+    const pipeline = this.redis.pipeline();
+    pipeline.incrby(key, delta);
+    pipeline.sadd(this.pendingCommentsSetKey, commentId);
+    await pipeline.exec();
+    this.logger.debug(
+      `Redis comment reactionCount ${delta > 0 ? '+' : ''}${delta} for comment ${commentId}`,
+    );
+  }
+  async popPendingCommentIds(count: number = 1000): Promise<string[]> {
+    const result = await this.redis.spop(this.pendingCommentsSetKey, count);
+    if (!result) return [];
+    return Array.isArray(result) ? result : [result];
+  }
+  async getAndResetCommentCounter(commentId: string): Promise<number> {
+    const key = this.commentCounterKey(commentId);
     const value = await this.redis.getdel(key);
     return parseInt(value || '0', 10);
   }

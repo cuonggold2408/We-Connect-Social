@@ -9,6 +9,7 @@ import { CounterQueueService } from '@shared/queue/counter-queue.service';
 import { CreateCommentDto } from '@modules/comments/dto/request/create-comment.dto';
 import { UpdateCommentDto } from '@modules/comments/dto/request/update-comment.dto';
 import { CommentResponseDto } from '@modules/comments/dto/response/comment-response.dto';
+import { ReactionType } from '@/generated/prisma/client';
 
 @Injectable()
 export class CommentsService {
@@ -23,6 +24,7 @@ export class CommentsService {
       id: string;
       content?: string | null;
       imageUrl?: string | null;
+      reactionCount: number;
       author: {
         id: string;
         username: string;
@@ -33,8 +35,10 @@ export class CommentsService {
       createdAt: Date;
       updatedAt: Date | null;
       _count: { replies: number };
+      commentReactions?: { type: ReactionType }[];
     },
     postAuthorId: string,
+    statsMap?: Map<string, { type: ReactionType; count: number }[]>,
   ): CommentResponseDto {
     return new CommentResponseDto({
       id: comment.id,
@@ -44,6 +48,9 @@ export class CommentsService {
       parentId: comment.parentId,
       replyCount: comment._count.replies,
       isPostAuthor: comment.author.id === postAuthorId,
+      reactionCount: comment.reactionCount,
+      currentUserReaction: comment.commentReactions?.[0]?.type ?? null,
+      stats: statsMap?.get(comment.id) ?? null,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
     });
@@ -66,7 +73,6 @@ export class CommentsService {
         throw new ForbiddenException('Bình luận gốc không thuộc bài viết này');
       }
 
-      // Giới hạn 2 tầng: nếu parent đã là reply thì gán parentId = parent.parentId
       if (parentComment.parentId) {
         dto.parentId = parentComment.parentId;
       }
@@ -76,13 +82,16 @@ export class CommentsService {
       throw new ForbiddenException('Bình luận phải có nội dung hoặc ảnh');
     }
 
-    const comment = await this.commentsRepository.create({
-      content: dto.content,
-      authorId: userId,
-      postId,
-      parentId: dto.parentId,
-      imageUrl: dto.imageUrl,
-    });
+    const comment = await this.commentsRepository.create(
+      {
+        content: dto.content,
+        authorId: userId,
+        postId,
+        parentId: dto.parentId,
+        imageUrl: dto.imageUrl,
+      },
+      userId,
+    );
 
     await this.counterQueue.incrementCounter(postId, 'commentCount', 1);
 
@@ -125,8 +134,15 @@ export class CommentsService {
       commentId,
       content || '',
       dto.imageUrl,
+      userId,
     );
-    return this.toResponseDto(updated, post.authorId);
+
+    const statsMap =
+      updated.reactionCount > 0
+        ? await this.commentsRepository.getReactionStatsBulk([commentId])
+        : new Map();
+
+    return this.toResponseDto(updated, post.authorId, statsMap);
   }
 
   async deleteComment(userId: string, postId: string, commentId: string) {
@@ -144,7 +160,6 @@ export class CommentsService {
       throw new NotFoundException('Bài viết không tồn tại');
     }
 
-    // Cho phép tác giả comment hoặc chủ bài viết xóa
     if (comment.authorId !== userId && post.authorId !== userId) {
       throw new ForbiddenException('Bạn không có quyền xóa bình luận này');
     }
@@ -158,7 +173,12 @@ export class CommentsService {
     );
   }
 
-  async getComments(postId: string, cursor?: string, limit: number = 10) {
+  async getComments(
+    postId: string,
+    currentUserId: string,
+    cursor?: string,
+    limit: number = 10,
+  ) {
     const post = await this.postsRepository.findById(postId);
     if (!post) {
       throw new NotFoundException('Bài viết không tồn tại');
@@ -166,14 +186,21 @@ export class CommentsService {
 
     const comments = await this.commentsRepository.findByPostId(
       postId,
+      currentUserId,
       cursor,
       limit,
     );
     const hasMore = comments.length > limit;
     const sliced = hasMore ? comments.slice(0, limit) : comments;
 
+    const idsWithReactions = sliced
+      .filter((c) => c.reactionCount > 0)
+      .map((c) => c.id);
+    const statsMap =
+      await this.commentsRepository.getReactionStatsBulk(idsWithReactions);
+
     return {
-      data: sliced.map((c) => this.toResponseDto(c, post.authorId)),
+      data: sliced.map((c) => this.toResponseDto(c, post.authorId, statsMap)),
       nextCursor: hasMore ? sliced[sliced.length - 1].id : null,
     };
   }
@@ -181,6 +208,7 @@ export class CommentsService {
   async getReplies(
     postId: string,
     commentId: string,
+    currentUserId: string,
     cursor?: string,
     limit: number = 5,
   ) {
@@ -196,14 +224,21 @@ export class CommentsService {
 
     const replies = await this.commentsRepository.findReplies(
       commentId,
+      currentUserId,
       cursor,
       limit,
     );
     const hasMore = replies.length > limit;
     const sliced = hasMore ? replies.slice(0, limit) : replies;
 
+    const idsWithReactions = sliced
+      .filter((c) => c.reactionCount > 0)
+      .map((c) => c.id);
+    const statsMap =
+      await this.commentsRepository.getReactionStatsBulk(idsWithReactions);
+
     return {
-      data: sliced.map((c) => this.toResponseDto(c, post.authorId)),
+      data: sliced.map((c) => this.toResponseDto(c, post.authorId, statsMap)),
       nextCursor: hasMore ? sliced[sliced.length - 1].id : null,
     };
   }

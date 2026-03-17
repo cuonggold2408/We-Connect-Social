@@ -24,17 +24,24 @@ export class CommentsController {
   @Get()
   async getComments(
     @Param('postId', ParseUUIDPipe) postId: string,
+    @CurrentUser('id') userId: string,
     @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
   ) {
     const parsedLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
-    return this.commentsService.getComments(postId, cursor, parsedLimit);
+    return this.commentsService.getComments(
+      postId,
+      userId,
+      cursor,
+      parsedLimit,
+    );
   }
 
   @Get(':commentId/replies')
   async getReplies(
     @Param('postId', ParseUUIDPipe) postId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
+    @CurrentUser('id') userId: string,
     @Query('cursor', new ParseUUIDPipe({ optional: true })) cursor?: string,
     @Query('limit') limit?: string,
   ) {
@@ -42,6 +49,7 @@ export class CommentsController {
     return this.commentsService.getReplies(
       postId,
       commentId,
+      userId,
       cursor,
       parsedLimit,
     );

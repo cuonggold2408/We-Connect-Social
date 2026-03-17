@@ -1,5 +1,5 @@
-import { ReactionType } from '@/generated/prisma/enums';
 import { Expose, Type } from 'class-transformer';
+import { ReactionType } from '@/generated/prisma/enums';
 
 class CommentAuthorDto {
   @Expose() id: string;
@@ -11,7 +11,6 @@ class CommentAuthorDto {
 export class CommentResponseDto {
   @Expose() id: string;
   @Expose() content: string | null;
-  @Expose() reactionCount: number;
   @Expose() imageUrl: string | null;
 
   @Expose()
@@ -22,6 +21,7 @@ export class CommentResponseDto {
   @Expose() replyCount: number;
   @Expose() isPostAuthor: boolean;
 
+  @Expose() reactionCount: number;
   @Expose() currentUserReaction: ReactionType | null;
   @Expose() stats: { type: ReactionType; count: number }[] | null;
 
