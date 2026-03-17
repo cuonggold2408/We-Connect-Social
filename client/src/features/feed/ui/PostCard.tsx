@@ -195,7 +195,8 @@ const PostCard = ({ post }: PostCardProps) => {
           <div className="flex items-center gap-1.5">
             {totalReactionCount > 0 && (
               <ReactionListDialog
-                postId={post.id}
+                targetType="post"
+                targetId={post.id}
                 stats={reactionStats ?? []}
                 totalCount={totalReactionCount}
               >

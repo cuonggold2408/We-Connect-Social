@@ -26,14 +26,16 @@ interface ReactionStat {
 }
 
 interface ReactionListDialogProps {
-  postId: string;
+  targetType: "post" | "comment";
+  targetId: string;
   stats: ReactionStat[];
   totalCount: number;
   children: React.ReactNode;
 }
 
 export function ReactionListDialog({
-  postId,
+  targetType,
+  targetId,
   stats,
   totalCount,
   children,
@@ -44,7 +46,7 @@ export function ReactionListDialog({
   );
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useReactionList(postId, activeTab, open);
+    useReactionList(targetType, targetId, activeTab, open);
 
   const reactions = data?.pages.flatMap((page) => page.data) ?? [];
 

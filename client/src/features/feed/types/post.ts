@@ -22,6 +22,9 @@ export interface Comment {
   parentId: string | null;
   replyCount: number;
   isPostAuthor: boolean;
+  reactionCount: number;
+  currentUserReaction: ReactionType | null;
+  stats: { type: ReactionType; count: number }[] | null;
   createdAt: string;
   updatedAt: string | null;
 }

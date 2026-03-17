@@ -7,3 +7,8 @@ export const commentKeys = {
   replies: (postId: string, commentId: string) =>
     ["comments", postId, "replies", commentId] as const,
 };
+
+export const commentReactionKeys = {
+  list: (commentId: string, type?: string) =>
+    ["commentReactions", commentId, type ?? "ALL"] as const,
+};

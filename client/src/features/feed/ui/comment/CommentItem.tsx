@@ -33,6 +33,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/shared/components/ui/hover-card";
+import { motion } from "motion/react";
 import { timeAgo } from "@/shared/helpers/format-time";
 import { useAuthStore } from "@/shared/stores/auth.store";
 import {
@@ -41,13 +47,16 @@ import {
   useDeleteComment,
 } from "@/features/feed/hooks/useComments";
 import { useEditComment } from "@/features/feed/hooks/useEditComment";
+import { useCommentReaction } from "@/features/feed/hooks/useCommentReaction";
 import { CommentInput } from "@/features/feed/ui/comment/CommentInput";
-import type { Comment } from "@/features/feed/types/post";
+import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
+import { REACTION_CONFIG } from "@/features/feed/constants/config";
+import type { Comment, ReactionType } from "@/features/feed/types/post";
 import { TwemojiText } from "@/shared/components/TwemojiText";
 import Image from "next/image";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
 
-/* ─── Action Menu (tái sử dụng cho cả text comment và image-only) ── */
+/* ─── Action Menu ── */
 
 interface CommentActionMenuProps {
   canEdit: boolean;
@@ -123,6 +132,7 @@ export const CommentItem = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [replyMention, setReplyMention] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [reactionOpen, setReactionOpen] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const isAuthor = user?.id === comment.author.id;
@@ -140,6 +150,11 @@ export const CommentItem = ({
 
   const createComment = useCreateComment(postId);
   const deleteComment = useDeleteComment(postId);
+  const { toggleReaction } = useCommentReaction(
+    postId,
+    comment.id,
+    comment.parentId,
+  );
 
   const {
     isEditing,
@@ -166,6 +181,12 @@ export const CommentItem = ({
     ? comment.content.slice(mentionMatch[0].length)
     : comment.content;
 
+  const currentReaction = comment.currentUserReaction;
+  const reactionDisplay = currentReaction
+    ? REACTION_CONFIG[currentReaction]
+    : null;
+  const topReactions = comment.stats?.slice(0, 2);
+
   const handleReply = (content: string, imageUrl?: string) => {
     createComment.mutate(
       { content, parentId: comment.parentId ?? comment.id, imageUrl },
@@ -189,6 +210,11 @@ export const CommentItem = ({
     deleteComment.mutate(comment.id);
   };
 
+  const handleReaction = (type: ReactionType | null) => {
+    setReactionOpen(false);
+    toggleReaction(type);
+  };
+
   return (
     <div
       className={cn(
@@ -205,119 +231,147 @@ export const CommentItem = ({
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <div className="group/comment flex flex-col items-start">
+        <div
+          className={cn(
+            "group/comment flex flex-col items-start",
+            comment.reactionCount > 0 && !isEditing && "mb-1.5",
+          )}
+        >
           <div className="flex max-w-[calc(100%-2rem)] items-center gap-2">
-            <div
-              className={cn(
-                "w-fit rounded-2xl px-3 py-2",
-                !isImageOnly && "bg-gray-100",
-              )}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="text-[13px] font-semibold text-gray-900">
-                  {comment.author.fullname || comment.author.username}
-                </span>
-                {comment.isPostAuthor && (
-                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
-                    Tác giả
+            <div className="relative">
+              <div
+                className={cn(
+                  "w-fit rounded-2xl px-3 py-2",
+                  !isImageOnly && "bg-gray-100",
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-semibold text-gray-900">
+                    {comment.author.fullname || comment.author.username}
                   </span>
+                  {comment.isPostAuthor && (
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                      Tác giả
+                    </span>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div className="mt-1">
+                    <textarea
+                      ref={editTextareaRef}
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      onKeyDown={handleEditKeyDown}
+                      autoFocus
+                      rows={1}
+                      maxLength={2000}
+                      className="w-full resize-none bg-transparent text-sm text-gray-800 outline-none"
+                      onInput={(e) => {
+                        const el = e.target as HTMLTextAreaElement;
+                        el.style.height = "auto";
+                        el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                      }}
+                    />
+
+                    {(editImageUrl || editImagePreview) && (
+                      <div className="relative my-1 inline-block">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
+                          <Image
+                            src={editImagePreview || editImageUrl || ""}
+                            alt="Preview"
+                            fill
+                            className="object-cover"
+                          />
+                          {isUploadingEditImage && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={removeImage}
+                          disabled={isUploadingEditImage}
+                          className="absolute -top-1.5 -right-1.5 cursor-pointer rounded-full bg-gray-700 p-0.5 text-white hover:bg-gray-600 disabled:opacity-50"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="mt-1 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                        <span>Enter để lưu</span>
+                        <span>·</span>
+                        <button
+                          onClick={resetEditState}
+                          className="cursor-pointer hover:underline"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingEditImage}
+                          className="cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                        >
+                          <Camera className="h-4 w-4 text-gray-500" />
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {mentionMatch ? (
+                      <p className="text-sm whitespace-pre-wrap text-gray-800">
+                        <span className="font-semibold text-blue-600">
+                          @{mentionMatch[1]}
+                        </span>{" "}
+                        <TwemojiText
+                          text={displayContent}
+                          as="span"
+                          className="text-sm text-gray-800"
+                        />
+                      </p>
+                    ) : (
+                      <TwemojiText
+                        text={comment.content}
+                        className="text-sm whitespace-pre-wrap text-gray-800"
+                      />
+                    )}
+                  </>
                 )}
               </div>
 
-              {isEditing ? (
-                <div className="mt-1">
-                  <textarea
-                    ref={editTextareaRef}
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    onKeyDown={handleEditKeyDown}
-                    autoFocus
-                    rows={1}
-                    maxLength={2000}
-                    className="w-full resize-none bg-transparent text-sm text-gray-800 outline-none"
-                    onInput={(e) => {
-                      const el = e.target as HTMLTextAreaElement;
-                      el.style.height = "auto";
-                      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-                    }}
-                  />
-
-                  {(editImageUrl || editImagePreview) && (
-                    <div className="relative my-1 inline-block">
-                      <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200">
-                        <Image
-                          src={editImagePreview || editImageUrl || ""}
-                          alt="Preview"
-                          fill
-                          className="object-cover"
-                        />
-                        {isUploadingEditImage && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <Loader2 className="h-5 w-5 animate-spin text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={removeImage}
-                        disabled={isUploadingEditImage}
-                        className="absolute -top-1.5 -right-1.5 cursor-pointer rounded-full bg-gray-700 p-0.5 text-white hover:bg-gray-600 disabled:opacity-50"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                      <span>Enter để lưu</span>
-                      <span>·</span>
-                      <button
-                        onClick={resetEditState}
-                        className="cursor-pointer hover:underline"
-                      >
-                        Hủy
-                      </button>
-                    </div>
-
-                    <div className="flex items-center">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingEditImage}
-                        className="cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-50"
-                      >
-                        <Camera className="h-4 w-4 text-gray-500" />
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif,image/webp"
-                        onChange={handleImageSelect}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {mentionMatch ? (
-                    <p className="text-sm whitespace-pre-wrap text-gray-800">
-                      <span className="font-semibold text-blue-600">
-                        @{mentionMatch[1]}
-                      </span>{" "}
-                      <TwemojiText
-                        text={displayContent}
-                        as="span"
-                        className="text-sm text-gray-800"
-                      />
-                    </p>
-                  ) : (
-                    <TwemojiText
-                      text={comment.content}
-                      className="text-sm whitespace-pre-wrap text-gray-800"
-                    />
-                  )}
-                </>
+              {/* Reaction badge */}
+              {comment.reactionCount > 0 && !isEditing && (
+                <ReactionListDialog
+                  targetType="comment"
+                  targetId={comment.id}
+                  stats={comment.stats ?? []}
+                  totalCount={comment.reactionCount}
+                >
+                  <button className="absolute right-0 -bottom-2.5 z-10 flex cursor-pointer items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md">
+                    {topReactions?.map((stat) => (
+                      <span key={stat.type} className="text-xs leading-none">
+                        {REACTION_CONFIG[stat.type].icon}
+                      </span>
+                    ))}
+                    <span className="ml-0.5 text-[11px] font-medium text-gray-500">
+                      {comment.reactionCount}
+                    </span>
+                  </button>
+                </ReactionListDialog>
               )}
             </div>
 
@@ -365,6 +419,62 @@ export const CommentItem = ({
           <div className="mt-0.5 flex items-center gap-3 px-2 text-[12px] text-gray-500">
             <span>{timeAgo(comment.createdAt)}</span>
             {comment.updatedAt && <span className="italic">đã chỉnh sửa</span>}
+
+            {/* Reaction */}
+            <HoverCard
+              openDelay={500}
+              closeDelay={200}
+              open={reactionOpen}
+              onOpenChange={setReactionOpen}
+            >
+              <HoverCardTrigger asChild>
+                <button
+                  onClick={() =>
+                    handleReaction(currentReaction ? null : "LIKE")
+                  }
+                  className={cn(
+                    "cursor-pointer font-semibold hover:underline",
+                    reactionDisplay?.color,
+                  )}
+                >
+                  {reactionDisplay?.label ?? "Thích"}
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                side="top"
+                align="start"
+                sideOffset={10}
+                className="w-auto rounded-[50px] border-gray-50 bg-white p-1 shadow-lg"
+              >
+                <div className="flex items-center gap-0.5">
+                  {Object.entries(REACTION_CONFIG).map(([type, config]) => (
+                    <motion.div
+                      key={type}
+                      whileHover={{ scale: 1.3, y: -4 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 10,
+                      }}
+                      className="group/reaction relative flex cursor-pointer items-center justify-center px-1"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleReaction(type as ReactionType);
+                      }}
+                    >
+                      <div className="origin-bottom text-[26px] leading-none select-none active:scale-95">
+                        {config.icon}
+                      </div>
+                      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-white opacity-0 transition-opacity duration-200 group-hover/reaction:opacity-100">
+                        {config.label}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+
             {!isReply && (
               <button
                 onClick={() => {
