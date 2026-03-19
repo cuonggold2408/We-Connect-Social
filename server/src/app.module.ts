@@ -17,6 +17,7 @@ import { ReactionsModule } from '@/modules/reactions/reactions.module';
 import { UploadModule } from '@/modules/upload/upload.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { CommentReactionsModule } from './modules/comment-reactions/comment-reactions.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CommentReactionsModule } from './modules/comment-reactions/comment-reac
     UploadModule,
     CommentsModule,
     CommentReactionsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -62,6 +62,17 @@ enum PostVisibility {
   @@map("post_visibility")
 }
 
+enum NotificationType {
+  POST_REACTION
+  POST_COMMENT
+  COMMENT_REPLY
+  COMMENT_REACTION
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+
+  @@map("notification_type")
+}
+
 model User {
   id       String @id @default(uuid(7)) @db.Uuid
   username String @unique @db.VarChar(20)
@@ -94,6 +105,9 @@ model User {
   passwordResetTokens PasswordReset[]
 
   accessUsers AccessUser[]
+
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+  sentNotifications     Notification[] @relation("SentNotifications")
 
   posts     Post[]
   reactions Reaction[]
@@ -268,4 +282,31 @@ model Friendship {
   @@unique([senderId, receiverId])
   @@index([receiverId])
   @@map("friendships")
+}
+
+model Notification{
+  id String @id @default(uuid(7)) @db.Uuid
+  
+  type NotificationType
+
+
+  recipientId String @map("recipient_id") @db.Uuid // Người nhận Notification
+  recipient User @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  actorId String @map("actor_id") @db.Uuid // Người thực hiện hành động
+  actor User @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+
+  entityType String @map("entity_type") @db.VarChar(20) // Loại thực thể (POST, COMMENT, FRIENDSHIP)
+  entityId String @map("entity_id") @db.VarChar(20) 
+
+  metadata Json? @db.JsonB // Lưu trữ data (Comment, Lời mời kết bạn,...)
+
+  isRead Boolean @default(false) @map("is_read")
+
+  createAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([recipientId, isRead, createAt(sort: Desc)])
+  @@index([recipientId,createAt(sort: Desc)])
+  @@index([actorId, entityType,entityId])
+  @@map("notifications")
 }
