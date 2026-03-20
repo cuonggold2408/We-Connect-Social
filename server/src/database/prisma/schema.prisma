@@ -297,7 +297,7 @@ model Notification{
   actor User @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
 
   entityType String @map("entity_type") @db.VarChar(20) // Loại thực thể (POST, COMMENT, FRIENDSHIP)
-  entityId String @map("entity_id") @db.VarChar(20) 
+  entityId String @map("entity_id") @db.Uuid 
 
   metadata Json? @db.JsonB // Lưu trữ data (Comment, Lời mời kết bạn,...)
 

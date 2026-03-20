@@ -2,7 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ReactionsRepository } from '@modules/reactions/reactions.repository';
 import { PostsRepository } from '@modules/posts/posts.repository';
 import { CounterQueueService } from '@shared/queue/counter-queue.service';
-import { ReactionType } from '@/generated/prisma/client';
+import { NotificationType, ReactionType } from '@/generated/prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  NOTIFICATION_EVENTS,
+  NotificationEntityType,
+  NotificationPayload,
+} from '@modules/notifications/events/notifications.events';
 
 @Injectable()
 export class ReactionsService {
@@ -10,6 +16,7 @@ export class ReactionsService {
     private reactionsRepository: ReactionsRepository,
     private postsRepository: PostsRepository,
     private counterQueue: CounterQueueService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async react(userId: string, postId: string, type: ReactionType) {
@@ -31,6 +38,19 @@ export class ReactionsService {
 
     if (!existingReactPost) {
       await this.counterQueue.incrementCounter(postId, 'reactionCount', 1);
+    }
+
+    if (post.authorId !== userId) {
+      this.eventEmitter.emit(NOTIFICATION_EVENTS.POST_REACTED, {
+        actorId: userId,
+        recipientId: post.authorId,
+        type: NotificationType.POST_REACTION,
+        entityType: NotificationEntityType.POST,
+        entityId: postId,
+        metadata: {
+          reactionType: type,
+        },
+      } as NotificationPayload);
     }
 
     return reaction;

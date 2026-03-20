@@ -5,6 +5,7 @@ import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import { RedisIoAdapter } from '@/shared/websocket/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -36,6 +37,12 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  const redisAdapter = new RedisIoAdapter(app);
+  await redisAdapter.connectToRedis(
+    `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  );
+  app.useWebSocketAdapter(redisAdapter);
 
   await app.listen(process.env.PORT ?? 8080);
 }

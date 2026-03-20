@@ -9,7 +9,13 @@ import { CounterQueueService } from '@shared/queue/counter-queue.service';
 import { CreateCommentDto } from '@modules/comments/dto/request/create-comment.dto';
 import { UpdateCommentDto } from '@modules/comments/dto/request/update-comment.dto';
 import { CommentResponseDto } from '@modules/comments/dto/response/comment-response.dto';
-import { ReactionType } from '@/generated/prisma/client';
+import { NotificationType, ReactionType } from '@/generated/prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  NOTIFICATION_EVENTS,
+  NotificationEntityType,
+  NotificationPayload,
+} from '@modules/notifications/events/notifications.events';
 
 @Injectable()
 export class CommentsService {
@@ -17,6 +23,7 @@ export class CommentsService {
     private commentsRepository: CommentsRepository,
     private postsRepository: PostsRepository,
     private counterQueue: CounterQueueService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   private toResponseDto(
@@ -94,6 +101,38 @@ export class CommentsService {
     );
 
     await this.counterQueue.incrementCounter(postId, 'commentCount', 1);
+
+    if (post.authorId !== userId) {
+      this.eventEmitter.emit(NOTIFICATION_EVENTS.POST_COMMENTED, {
+        actorId: userId,
+        recipientId: post.authorId,
+        type: NotificationType.POST_COMMENT,
+        entityType: NotificationEntityType.POST,
+        entityId: postId,
+        metadata: {
+          commentPreview: dto.content?.substring(0, 100),
+        },
+      } as NotificationPayload);
+
+      if (dto.parentId) {
+        const parentComment = await this.commentsRepository.findById(
+          dto.parentId,
+        );
+
+        if (parentComment && parentComment.authorId !== userId) {
+          this.eventEmitter.emit(NOTIFICATION_EVENTS.COMMENT_REPLIED, {
+            actorId: userId,
+            recipientId: parentComment.authorId,
+            type: NotificationType.COMMENT_REPLY,
+            entityType: NotificationEntityType.REPLY,
+            entityId: dto.parentId,
+            metadata: {
+              commentPreview: dto.content?.substring(0, 100),
+            },
+          } as NotificationPayload);
+        }
+      }
+    }
 
     return this.toResponseDto(comment, post.authorId);
   }
