@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search,
-  Bell,
   MessageCircle,
   Users,
   X,
@@ -37,6 +36,7 @@ import {
 } from "@/shared/components/ui/avatar";
 import { authApi } from "@/shared/api/auth.api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import NotificationBell from "@/features/notification/ui/NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/", label: "Trang chủ", icon: House },
@@ -176,9 +176,7 @@ const Header = () => {
           <Button className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200">
             <MenuGridIcon className="size-5 text-gray-600" />
           </Button>
-          <Button className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200">
-            <Bell className="size-5 text-gray-600" />
-          </Button>
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger className="outline-none">
               <Avatar className="size-10 cursor-pointer">
