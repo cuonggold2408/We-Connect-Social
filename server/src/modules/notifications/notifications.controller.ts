@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Patch, Query } from '@nestjs/common';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService } from '@modules/notifications/notifications.service';
 import { CurrentUser } from '@/shared/decorators/current-user.decorator';
+import { QueryNotificationDto } from '@modules/notifications/dto/request/query-notification.dto';
+import { MarkReadNotificationDto } from '@modules/notifications/dto/request/mark-read-notification.dto';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -9,13 +11,12 @@ export class NotificationsController {
   @Get()
   async getNotifications(
     @CurrentUser('id') userId: string,
-    @Query('cursor') cursor?: string,
-    @Query('limit') limit?: string,
+    @Query() query: QueryNotificationDto,
   ) {
     return this.notificationsService.getNotifications(
       userId,
-      cursor,
-      limit ? parseInt(limit, 10) : 20,
+      query.cursor,
+      query.limit,
     );
   }
 
@@ -27,9 +28,9 @@ export class NotificationsController {
   @Patch('read')
   async markAsRead(
     @CurrentUser('id') userId: string,
-    @Body('ids') ids: string[],
+    @Body() dto: MarkReadNotificationDto,
   ) {
-    return this.notificationsService.markAsRead(userId, ids);
+    return this.notificationsService.markAsRead(userId, dto.ids);
   }
 
   @Patch('read-all')

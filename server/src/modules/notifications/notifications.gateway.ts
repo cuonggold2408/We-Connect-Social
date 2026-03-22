@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import * as cookie from 'cookie';
+import { NotificationSocketData } from '@modules/notifications/events/notifications.events';
 
 @WebSocketGateway({
   cors: {
@@ -22,8 +23,6 @@ export class NotificationsGateway
 {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(NotificationsGateway.name);
-
-  private userSockets = new Map<string, Set<string>>();
 
   constructor(
     private jwtService: JwtService,
@@ -67,15 +66,12 @@ export class NotificationsGateway
   handleDisconnect(client: Socket) {
     const userId = client.data.userId as string;
     if (userId) {
-      this.userSockets.get(userId)?.delete(client.id);
-      if (this.userSockets.get(userId)?.size === 0) {
-        this.userSockets.delete(userId);
-      }
+      this.logger.log(`User ${userId} disconnected (socket: ${client.id})`);
     }
   }
 
-  sendToUser(userId: string, notification: any) {
-    this.server.to(`user:${userId}`).emit('new-notification', notification);
+  sendNotification(userId: string, notification: NotificationSocketData) {
+    this.server.to(`user:${userId}`).emit('new-notification', { notification });
   }
 
   sendUnreadCount(userId: string, count: number) {

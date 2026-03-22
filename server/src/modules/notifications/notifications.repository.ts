@@ -33,36 +33,13 @@ export class NotificationRepository {
     return notification;
   }
 
-  async existsRecent(
-    actorId: string,
-    entityType: NotificationEntityType,
-    entityId: string,
-    type: NotificationType,
-    withinMs: number,
-  ): Promise<boolean> {
-    const since = new Date(Date.now() - withinMs);
-    const count = await this.prisma.notification.count({
-      where: {
-        actorId,
-        entityType,
-        entityId,
-        type,
-        createAt: {
-          gte: since,
-        },
-      },
-    });
-
-    return count > 0;
-  }
-
   async findByRecipient(recipientId: string, cursor?: string, limit = 20) {
     return this.prisma.notification.findMany({
       where: {
         recipientId,
       },
       orderBy: {
-        createAt: 'desc',
+        createdAt: 'desc',
       },
       take: limit + 1,
       ...(cursor && {

@@ -303,10 +303,10 @@ model Notification{
 
   isRead Boolean @default(false) @map("is_read")
 
-  createAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@index([recipientId, isRead, createAt(sort: Desc)])
-  @@index([recipientId,createAt(sort: Desc)])
+  @@index([recipientId, isRead, createdAt(sort: Desc)])
+  @@index([recipientId,createdAt(sort: Desc)])
   @@index([actorId, entityType,entityId])
   @@map("notifications")
 }

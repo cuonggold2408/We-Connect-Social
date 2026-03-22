@@ -23,3 +23,19 @@ export enum NotificationEntityType {
   REPLY = 'REPLY',
   FRIEND = 'FRIEND',
 }
+
+export interface NotificationSocketData {
+  id: string;
+  type: NotificationType;
+  actor: {
+    id: string;
+    username: string;
+    fullname: string;
+    avatarUrl: string;
+  };
+  entityType: string;
+  entityId: string;
+  metadata?: Record<string, any>;
+  isRead: boolean;
+  createdAt: Date;
+}
