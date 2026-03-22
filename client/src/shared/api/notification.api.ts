@@ -1,26 +1,5 @@
 import { api } from "@/shared/api/axios";
-import {
-  NotificationEntityType,
-  NotificationType,
-} from "@/shared/stores/notification.store";
-
-export interface NotificationActor {
-  id: string;
-  username: string;
-  fullname: string;
-  avatarUrl: string;
-}
-
-export interface Notification {
-  id: string;
-  type: (typeof NotificationType)[keyof typeof NotificationType];
-  actor: NotificationActor;
-  entityType: NotificationEntityType;
-  entityId: string;
-  metadata?: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: string;
-}
+import type { Notification } from "@/shared/types/notification.types";
 
 export interface GetNotificationsResponse {
   data: Notification[];
@@ -46,7 +25,7 @@ export const notificationApi = {
       `/notifications?${params}`,
     );
 
-    return data.data!;
+    return data.data ?? { data: [], nextCursor: null };
   },
 
   getUnreadCount: async (): Promise<number> => {
