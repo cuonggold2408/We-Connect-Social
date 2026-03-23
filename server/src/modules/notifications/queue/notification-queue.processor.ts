@@ -7,7 +7,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
 
-import { NotificationPayload } from '@modules/notifications/events/notifications.events';
+import {
+  AggregationJobData,
+  NotificationPayload,
+} from '@modules/notifications/events/notifications.events';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 
 @Injectable()
@@ -25,8 +28,19 @@ export class NotificationQueueProcessor
   onModuleInit() {
     this.worker = new Worker(
       'notifications',
-      async (job: Job<NotificationPayload>) => {
-        await this.notificationsService.createAndNotify(job.data);
+      async (job: Job) => {
+        switch (job.name) {
+          case 'send-notification':
+            await this.notificationsService.createAndNotify(
+              job.data as NotificationPayload,
+            );
+            break;
+          case 'aggregate-notification':
+            await this.notificationsService.processAggregation(
+              job.data as AggregationJobData,
+            );
+            break;
+        }
       },
       {
         connection: {
@@ -36,9 +50,10 @@ export class NotificationQueueProcessor
         concurrency: 5,
       },
     );
-
     this.worker.on('failed', (job, err) => {
-      this.logger.error(`Notification job ${job?.id} failed: ${err.message}`);
+      this.logger.error(
+        `Notification job [${job?.name}] ${job?.id} failed: ${err.message}`,
+      );
     });
   }
 

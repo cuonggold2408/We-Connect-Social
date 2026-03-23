@@ -1,8 +1,18 @@
 import { NotificationType } from '@/generated/prisma/enums';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { NotificationEntityType } from '@/modules/notifications/events/notifications.events';
+import {
+  ActorSnapshot,
+  NotificationEntityType,
+} from '@/modules/notifications/events/notifications.events';
 import { Prisma } from '@/generated/prisma/client';
+
+const ACTOR_SELECT = {
+  id: true,
+  username: true,
+  fullname: true,
+  avatarUrl: true,
+} as const;
 
 @Injectable()
 export class NotificationRepository {
@@ -20,17 +30,70 @@ export class NotificationRepository {
       data,
       include: {
         actor: {
-          select: {
-            id: true,
-            username: true,
-            fullname: true,
-            avatarUrl: true,
-          },
+          select: ACTOR_SELECT,
         },
       },
     });
 
     return notification;
+  }
+
+  async upsertAggregated(data: {
+    recipientId: string;
+    type: NotificationType;
+    entityType: string;
+    entityId: string;
+    latestActorId: string;
+    newActorCount: number;
+    metadata: Prisma.InputJsonObject;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.notification.findFirst({
+        where: {
+          recipientId: data.recipientId,
+          type: data.type,
+          entityId: data.entityId,
+        },
+      });
+
+      if (existing) {
+        return tx.notification.update({
+          where: { id: existing.id },
+          data: {
+            actorId: data.latestActorId,
+            actorCount: existing.actorCount + data.newActorCount,
+            metadata: data.metadata,
+            isRead: false,
+            createdAt: new Date(),
+          },
+          include: { actor: { select: ACTOR_SELECT } },
+        });
+      }
+
+      return tx.notification.create({
+        data: {
+          type: data.type,
+          recipientId: data.recipientId,
+          actorId: data.latestActorId,
+          entityType: data.entityType,
+          entityId: data.entityId,
+          actorCount: data.newActorCount,
+          metadata: data.metadata,
+        },
+        include: { actor: { select: ACTOR_SELECT } },
+      });
+    });
+  }
+
+  async findActorsByIds(ids: string[]): Promise<ActorSnapshot[]> {
+    return this.prisma.user.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      select: ACTOR_SELECT,
+    });
   }
 
   async findByRecipient(recipientId: string, cursor?: string, limit = 20) {
@@ -93,6 +156,16 @@ export class NotificationRepository {
       data: {
         isRead: true,
       },
+    });
+  }
+
+  async findAggregated(
+    recipientId: string,
+    type: NotificationType,
+    entityId: string,
+  ) {
+    return this.prisma.notification.findFirst({
+      where: { recipientId, type, entityId },
     });
   }
 }

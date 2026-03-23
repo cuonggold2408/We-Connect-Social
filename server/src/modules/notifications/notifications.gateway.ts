@@ -70,8 +70,8 @@ export class NotificationsGateway
     }
   }
 
-  sendNotification(userId: string, notification: NotificationSocketData) {
-    this.server.to(`user:${userId}`).emit('new-notification', { notification });
+  sendNotification(userId: string, data: NotificationSocketData) {
+    this.server.to(`user:${userId}`).emit('new-notification', data);
   }
 
   sendUnreadCount(userId: string, count: number) {

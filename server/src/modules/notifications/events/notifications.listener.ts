@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationQueueService } from '@modules/notifications/queue/notification-queue.service';
 import { OnEvent } from '@nestjs/event-emitter';
-import type { NotificationPayload } from '@modules/notifications/events/notifications.events';
+import {
+  AGGREGATABLE_NOTIFICATION_TYPES,
+  type NotificationPayload,
+} from '@modules/notifications/events/notifications.events';
 
 @Injectable()
 export class NotificationListener {
-  constructor(private notificationQueue: NotificationQueueService) {}
+  constructor(private notificationQueueService: NotificationQueueService) {}
 
   @OnEvent('notification.**')
   async handleNotification(payload: NotificationPayload) {
@@ -13,6 +16,10 @@ export class NotificationListener {
       return;
     }
 
-    await this.notificationQueue.addJob(payload);
+    if (AGGREGATABLE_NOTIFICATION_TYPES.has(payload.type)) {
+      await this.notificationQueueService.addAggregationJob(payload);
+    } else {
+      await this.notificationQueueService.addImmediateJob(payload);
+    }
   }
 }

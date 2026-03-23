@@ -9,6 +9,11 @@ export const NOTIFICATION_EVENTS = {
   FRIEND_ACCEPTED: 'notification.friend.accepted',
 } as const;
 
+export const AGGREGATABLE_NOTIFICATION_TYPES = new Set<NotificationType>([
+  NotificationType.POST_REACTION,
+  NotificationType.COMMENT_REACTION,
+]);
+
 export interface NotificationPayload {
   actorId: string;
   recipientId: string;
@@ -27,15 +32,27 @@ export enum NotificationEntityType {
 export interface NotificationSocketData {
   id: string;
   type: NotificationType;
-  actor: {
-    id: string;
-    username: string;
-    fullname: string;
-    avatarUrl: string;
-  };
+  actors: ActorSnapshot[];
+  actorCount: number;
   entityType: string;
   entityId: string;
   metadata?: Record<string, any>;
   isRead: boolean;
   createdAt: Date;
+}
+
+export interface AggregationJobData {
+  recipientId: string;
+  type: NotificationType;
+  entityType: string;
+  entityId: string;
+  bufferKey: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ActorSnapshot {
+  id: string;
+  username: string;
+  fullname: string | null;
+  avatarUrl: string | null;
 }
