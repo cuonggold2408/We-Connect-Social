@@ -19,14 +19,15 @@ export enum NotificationEntityType {
 export interface NotificationActor {
   id: string;
   username: string;
-  fullname: string;
-  avatarUrl: string;
+  fullname: string | null;
+  avatarUrl: string | null;
 }
 
 export interface Notification {
   id: string;
   type: NotificationTypeValue;
-  actor: NotificationActor;
+  actors: NotificationActor[];
+  actorCount: number;
   entityType: NotificationEntityType;
   entityId: string;
   metadata?: Record<string, unknown>;

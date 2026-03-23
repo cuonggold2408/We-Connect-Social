@@ -3,15 +3,17 @@ import { useNotificationStore } from "@/shared/stores/notification.store";
 import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { notificationApi } from "@/shared/api/notification.api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { notificationKeys } from "@/features/feed/constants/queryKeys";
 
 export function useNotificationSocket() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const socketRef = useRef<Socket | null>(null);
   const setUnreadCount = useNotificationStore((state) => state.setUnreadCount);
+  const queryClient = useQueryClient();
 
   useQuery({
-    queryKey: ["unread-notifications-count"],
+    queryKey: notificationKeys.unreadCount,
     queryFn: async () => {
       const count = await notificationApi.getUnreadCount();
       setUnreadCount(count);
@@ -38,9 +40,9 @@ export function useNotificationSocket() {
       console.log("✅ Socket connected:", socket.id);
     });
 
-    socket.on("new-notification", (data) => {
-      const notification = data.notification ?? data;
-      useNotificationStore.getState().addNotification(notification);
+    socket.on("new-notification", () => {
+      useNotificationStore.getState().incrementUnreadCount();
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     });
 
     socket.on("unread-count", ({ count }) => {
@@ -55,5 +57,5 @@ export function useNotificationSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 }

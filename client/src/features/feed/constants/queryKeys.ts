@@ -12,3 +12,8 @@ export const commentReactionKeys = {
   list: (commentId: string, type?: string) =>
     ["commentReactions", commentId, type ?? "ALL"] as const,
 };
+
+export const notificationKeys = {
+  all: ["notifications"] as const,
+  unreadCount: ["unread-notifications-count"] as const,
+};
