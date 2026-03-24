@@ -26,13 +26,6 @@ export class CommentReactionsRepository {
     });
   }
 
-  async commentExists(commentId: string): Promise<boolean> {
-    const count = await this.prisma.comment.count({
-      where: { id: commentId },
-    });
-    return count > 0;
-  }
-
   async getReactionStats(commentId: string) {
     return this.prisma.commentReaction.groupBy({
       by: ['type'],
@@ -64,6 +57,13 @@ export class CommentReactionsRepository {
           },
         },
       },
+    });
+  }
+
+  async findCommentById(commentId: string) {
+    return this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true, authorId: true },
     });
   }
 }

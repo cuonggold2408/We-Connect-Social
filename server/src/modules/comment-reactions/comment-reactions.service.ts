@@ -1,19 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CommentReactionsRepository } from './comment-reactions.repository';
 import { CounterQueueService } from '@shared/queue/counter-queue.service';
-import { ReactionType } from '@/generated/prisma/client';
+import { NotificationType, ReactionType } from '@/generated/prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  NOTIFICATION_EVENTS,
+  NotificationEntityType,
+  NotificationPayload,
+} from '@modules/notifications/events/notifications.events';
 
 @Injectable()
 export class CommentReactionsService {
   constructor(
     private commentReactionsRepository: CommentReactionsRepository,
     private counterQueue: CounterQueueService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async react(userId: string, commentId: string, type: ReactionType) {
-    const exists =
-      await this.commentReactionsRepository.commentExists(commentId);
-    if (!exists) {
+    const comment =
+      await this.commentReactionsRepository.findCommentById(commentId);
+    if (!comment) {
       throw new NotFoundException('Bình luận không tồn tại');
     }
 
@@ -30,6 +37,17 @@ export class CommentReactionsService {
 
     if (!existing) {
       await this.counterQueue.incrementCommentReactionCounter(commentId, 1);
+    }
+
+    if (comment.authorId !== userId) {
+      this.eventEmitter.emit(NOTIFICATION_EVENTS.COMMENT_REACTED, {
+        actorId: userId,
+        recipientId: comment.authorId,
+        type: NotificationType.COMMENT_REACTION,
+        entityType: NotificationEntityType.REPLY,
+        entityId: commentId,
+        metadata: { reactionType: type },
+      } as NotificationPayload);
     }
 
     return reaction;

@@ -132,13 +132,18 @@ export class NotificationsService {
 
     const mergedActors = this.mergeActors(newActors, existingActors);
 
+    const existingActorIds = new Set(existingActors.map((a) => a.id));
+    const trulyNewCount = actorIds.filter(
+      (id) => !existingActorIds.has(id),
+    ).length;
+
     const notification = await this.notificationsRepository.upsertAggregated({
       recipientId: data.recipientId,
       type: data.type,
       entityType: data.entityType,
       entityId: data.entityId,
       latestActorId,
-      newActorCount: actorIds.length,
+      newActorCount: trulyNewCount,
       metadata: {
         ...data.metadata,
         actors: mergedActors as unknown as Prisma.InputJsonObject,
