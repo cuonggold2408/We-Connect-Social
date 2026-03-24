@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MoreHorizontal,
   Loader2,
@@ -118,6 +118,7 @@ interface CommentItemProps {
   postAuthorId: string;
   isReply?: boolean;
   onReplyTo?: (username: string) => void;
+  highlightCommentId?: string | null;
 }
 
 export const CommentItem = ({
@@ -126,6 +127,7 @@ export const CommentItem = ({
   postAuthorId,
   isReply = false,
   onReplyTo,
+  highlightCommentId,
 }: CommentItemProps) => {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
@@ -133,6 +135,10 @@ export const CommentItem = ({
   const [replyMention, setReplyMention] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [reactionOpen, setReactionOpen] = useState(false);
+
+  const isHighlighted = comment.id === highlightCommentId;
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const [showHighlight, setShowHighlight] = useState(isHighlighted);
 
   const user = useAuthStore((s) => s.user);
   const isAuthor = user?.id === comment.author.id;
@@ -215,12 +221,30 @@ export const CommentItem = ({
     toggleReaction(type);
   };
 
+  useEffect(() => {
+    if (!isHighlighted || !highlightRef.current) return;
+    const scrollTimer = setTimeout(() => {
+      highlightRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 300);
+    const fadeTimer = setTimeout(() => setShowHighlight(false), 2500);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(fadeTimer);
+    };
+  }, [isHighlighted]);
+
   return (
     <div
+      ref={isHighlighted ? highlightRef : undefined}
       className={cn(
         "flex gap-2",
         isReply && "ml-10",
         isDeleting && "pointer-events-none opacity-50",
+        isHighlighted && "rounded-lg transition-colors duration-1000",
+        showHighlight && "bg-blue-50",
       )}
     >
       <Avatar className="size-8 shrink-0">
@@ -531,6 +555,7 @@ export const CommentItem = ({
                 postAuthorId={postAuthorId}
                 isReply
                 onReplyTo={handleReplyToReply}
+                highlightCommentId={highlightCommentId}
               />
             ))}
             {hasMoreReplies && (

@@ -34,4 +34,9 @@ export const postsApi = {
     const { data } = await api.delete(`/posts/${postId}`);
     return data;
   },
+
+  getPostById: async (postId: string): Promise<Post> => {
+    const { data } = await api.get<ApiResponse<Post>>(`/posts/${postId}`);
+    return data.data!;
+  },
 };

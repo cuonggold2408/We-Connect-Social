@@ -47,12 +47,19 @@ const VISIBILITY_ICON: Record<
 
 interface PostCardProps {
   post: Post;
+  defaultCommentOpen?: boolean;
+  highlightCommentId?: string | null;
 }
 
-const PostCard = ({ post }: PostCardProps) => {
+const PostCard = ({
+  post,
+  defaultCommentOpen = false,
+  highlightCommentId,
+}: PostCardProps) => {
   const [reactionOpen, setReactionOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [commentDialogOpen, setCommentDialogOpen] =
+    useState(defaultCommentOpen);
 
   const openLightbox = useCallback((index: number) => {
     setLightboxIndex(index);
@@ -336,6 +343,7 @@ const PostCard = ({ post }: PostCardProps) => {
           post={post}
           open={commentDialogOpen}
           onOpenChange={setCommentDialogOpen}
+          highlightCommentId={highlightCommentId}
         />
       )}
     </article>

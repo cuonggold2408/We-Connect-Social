@@ -41,12 +41,14 @@ interface CommentDialogProps {
   post: Post;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  highlightCommentId?: string | null;
 }
 
 export function CommentDialog({
   post,
   open,
   onOpenChange,
+  highlightCommentId,
 }: CommentDialogProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -252,6 +254,7 @@ export function CommentDialog({
                       comment={comment}
                       postId={post.id}
                       postAuthorId={post.author.id}
+                      highlightCommentId={highlightCommentId}
                     />
                   ))}
 

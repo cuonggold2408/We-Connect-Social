@@ -12,6 +12,7 @@ type FeedData = InfiniteData<PaginatedResponse<Post>>;
 
 interface ReactionContext {
   previousFeed: FeedData | undefined;
+  previousPost: Post | undefined;
 }
 
 function updatePostInFeed(
@@ -67,6 +68,7 @@ export function useReaction(postId: string) {
 
   const applyOptimistic = (nextType: ReactionType | null): ReactionContext => {
     const previousFeed = queryClient.getQueryData<FeedData>(feedKeys.all);
+    const previousPost = queryClient.getQueryData<Post>(["post", postId]);
 
     if (previousFeed) {
       queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
@@ -78,12 +80,25 @@ export function useReaction(postId: string) {
       );
     }
 
-    return { previousFeed };
+    if (previousPost) {
+      queryClient.setQueryData<Post>(
+        ["post", postId],
+        buildOptimisticPost(previousPost, nextType),
+      );
+    }
+
+    return { previousFeed, previousPost };
   };
 
   const rollback = (context: ReactionContext | undefined) => {
     if (context?.previousFeed) {
       queryClient.setQueryData(feedKeys.all, context.previousFeed);
+    }
+    if (context?.previousPost) {
+      queryClient.setQueryData(
+        ["post", context.previousPost.id],
+        context.previousPost,
+      );
     }
   };
 

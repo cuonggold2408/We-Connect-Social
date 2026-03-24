@@ -10,6 +10,8 @@ import {
 import NotificationItem from "./NotificationItem";
 import type { Notification } from "@/shared/types/notification.types";
 import { useNotificationStore } from "@/shared/stores/notification.store";
+import { useRouter } from "next/navigation";
+import { getNotificationHref } from "@/features/notification/utility/getNotificationHref";
 
 interface Props {
   onClose: () => void;
@@ -25,6 +27,7 @@ const NotificationDropdown = ({ onClose }: Props) => {
   const notifications = data?.pages.flatMap((page) => page.data) ?? [];
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -51,7 +54,9 @@ const NotificationDropdown = ({ onClose }: Props) => {
         .setUnreadCount(Math.max(0, currentCount - 1));
       markAsRead.mutate([notification.id]);
     }
+
     onClose();
+    router.push(getNotificationHref(notification));
   };
 
   const handleMarkAllAsRead = () => {

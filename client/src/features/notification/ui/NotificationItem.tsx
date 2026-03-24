@@ -99,7 +99,7 @@ const NotificationItem = ({ notification, onClick }: Props) => {
   return (
     <button
       className={cn(
-        "flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100",
+        "flex w-full cursor-pointer gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100",
         !notification.isRead && "bg-blue-50/60 hover:bg-blue-50",
       )}
       onClick={() => onClick(notification)}
