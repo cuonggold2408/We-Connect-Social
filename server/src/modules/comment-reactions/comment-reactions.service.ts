@@ -46,7 +46,7 @@ export class CommentReactionsService {
         type: NotificationType.COMMENT_REACTION,
         entityType: NotificationEntityType.REPLY,
         entityId: commentId,
-        metadata: { reactionType: type },
+        metadata: { reactionType: type, postId: comment.postId },
       } as NotificationPayload);
     }
 

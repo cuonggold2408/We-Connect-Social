@@ -111,6 +111,7 @@ export class CommentsService {
         entityId: postId,
         metadata: {
           commentPreview: dto.content?.substring(0, 100),
+          commentId: comment.id,
         },
       } as NotificationPayload);
 
@@ -128,6 +129,7 @@ export class CommentsService {
             entityId: dto.parentId,
             metadata: {
               commentPreview: dto.content?.substring(0, 100),
+              postId,
             },
           } as NotificationPayload);
         }

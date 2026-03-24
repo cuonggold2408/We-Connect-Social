@@ -178,4 +178,11 @@ export class PostsRepository {
       include: this.feedInclude(currentUserId),
     });
   }
+
+  async findByIdForViewer(postId: string, currentUserId: string) {
+    return this.prisma.post.findUnique({
+      where: { id: postId },
+      include: this.feedInclude(currentUserId),
+    });
+  }
 }

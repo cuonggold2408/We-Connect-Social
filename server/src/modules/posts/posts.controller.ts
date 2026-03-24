@@ -45,4 +45,13 @@ export class PostsController {
     const userId = req['user'].id as string;
     await this.postsService.deletePost(userId, id);
   }
+
+  @Get(':id')
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: express.Request,
+  ) {
+    const userId = req['user'].id as string;
+    return this.postsService.getPostById(userId, id);
+  }
 }

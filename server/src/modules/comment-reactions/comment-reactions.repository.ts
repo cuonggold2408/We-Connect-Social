@@ -63,7 +63,7 @@ export class CommentReactionsRepository {
   async findCommentById(commentId: string) {
     return this.prisma.comment.findUnique({
       where: { id: commentId },
-      select: { id: true, authorId: true },
+      select: { id: true, authorId: true, postId: true },
     });
   }
 }

@@ -139,4 +139,16 @@ export class PostsService {
     }
     await this.postsRepository.delete(postId);
   }
+
+  async getPostById(userId: string, postId: string): Promise<PostResponseDto> {
+    const post = await this.postsRepository.findByIdForViewer(postId, userId);
+    if (!post) throw new NotFoundException('Bài viết không tồn tại');
+
+    const stats = await this.reactionsService.getReactionStats(postId);
+    return new PostResponseDto({
+      ...post,
+      currentUserReaction: post.reactions?.[0]?.type ?? null,
+      stats,
+    });
+  }
 }
