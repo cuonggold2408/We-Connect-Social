@@ -5,7 +5,7 @@ import {
 } from "@/shared/components/ui/avatar";
 import { formatTimeAgo } from "@/shared/helpers/format-time";
 import { cn } from "@/shared/lib/utils";
-import type { Notification } from "@/shared/types/notification.types";
+import { type Notification } from "@/shared/types/notification.types";
 import {
   ThumbsUp,
   MessageCircle,
@@ -54,6 +54,17 @@ const NOTIFICATION_META: Record<string, NotificationMeta> = {
   },
 };
 
+const REACTION_BADGE: Record<string, string> = {
+  LIKE: "👍",
+  LOVE: "❤️",
+  HAHA: "😆",
+  WOW: "😮",
+  SAD: "😢",
+  ANGRY: "😡",
+};
+
+const REACTION_TYPES = new Set(["POST_REACTION", "COMMENT_REACTION"]);
+
 function buildActorText(notification: Notification): string {
   const { actors, actorCount } = notification;
 
@@ -67,6 +78,14 @@ function buildActorText(notification: Notification): string {
   return `${primary} và ${othersCount} người khác`;
 }
 
+function getReactionEmoji(notification: Notification): string | null {
+  if (!REACTION_TYPES.has(notification.type)) return null;
+  const reactionType = notification.metadata?.reactionType as
+    | string
+    | undefined;
+  return REACTION_BADGE[reactionType ?? "LIKE"] ?? REACTION_BADGE.LIKE;
+}
+
 interface Props {
   notification: Notification;
   onClick: (notification: Notification) => void;
@@ -75,6 +94,7 @@ interface Props {
 const NotificationItem = ({ notification, onClick }: Props) => {
   const meta = NOTIFICATION_META[notification.type];
   const actorText = buildActorText(notification);
+  const reactionEmoji = getReactionEmoji(notification);
 
   return (
     <button
@@ -94,11 +114,22 @@ const NotificationItem = ({ notification, onClick }: Props) => {
         {meta && (
           <span
             className={cn(
-              "absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white",
-              meta.iconBg,
+              "absolute flex h-5 w-5 items-center justify-center rounded-full",
+              !reactionEmoji && meta.iconBg,
+              !reactionEmoji &&
+                !notification.isRead &&
+                "-right-1 bottom-1 ring-2 ring-white",
+              !reactionEmoji &&
+                notification.isRead &&
+                "-right-0.5 -bottom-0.5 ring-2 ring-white",
+              reactionEmoji && "right-0 bottom-1",
             )}
           >
-            <meta.Icon className="size-3 text-white" />
+            {reactionEmoji ? (
+              <span className="text-xl leading-none">{reactionEmoji}</span>
+            ) : (
+              <meta.Icon className="size-3 text-white" />
+            )}
           </span>
         )}
       </div>
