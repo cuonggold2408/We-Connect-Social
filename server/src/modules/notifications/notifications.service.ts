@@ -111,7 +111,7 @@ export class NotificationsService {
       return;
     }
 
-    const actorIds = await this.redis.smembers(tempKey);
+    const actorIds = await this.redis.zrange(tempKey, 0, -1);
     if (actorIds.length === 0) {
       await this.redis.del(tempKey);
       return;
@@ -227,5 +227,9 @@ export class NotificationsService {
     await this.redis.set(this.unreadCacheKey(userId), 0, 'EX', 60);
     this.notificationsGateway.sendUnreadCount(userId, 0);
     return { success: true };
+  }
+
+  async onModuleDestroy() {
+    await this.redis.quit();
   }
 }

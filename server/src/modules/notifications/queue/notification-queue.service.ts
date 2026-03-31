@@ -37,8 +37,12 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       payload.type,
       payload.entityId,
     );
-    await this.redis.sadd(key, payload.actorId);
-    await this.redis.expire(key, BUFFER_TTL_SECONDS);
+    const score = Date.now();
+    await this.redis
+      .pipeline()
+      .zadd(key, score, payload.actorId)
+      .expire(key, BUFFER_TTL_SECONDS)
+      .exec();
     const jobId = `agg-${payload.recipientId}-${payload.type}-${payload.entityId}`;
     await this.queue.add(
       'aggregate-notification',
@@ -72,5 +76,6 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {}
   async onModuleDestroy() {
     await this.queue.close();
+    await this.redis.quit();
   }
 }

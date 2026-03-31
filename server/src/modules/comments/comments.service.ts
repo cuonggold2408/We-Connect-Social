@@ -114,25 +114,29 @@ export class CommentsService {
           commentId: comment.id,
         },
       } as NotificationPayload);
+    }
 
-      if (dto.parentId) {
-        const parentComment = await this.commentsRepository.findById(
-          dto.parentId,
-        );
+    if (dto.parentId) {
+      const parentComment = await this.commentsRepository.findById(
+        dto.parentId,
+      );
 
-        if (parentComment && parentComment.authorId !== userId) {
-          this.eventEmitter.emit(NOTIFICATION_EVENTS.COMMENT_REPLIED, {
-            actorId: userId,
-            recipientId: parentComment.authorId,
-            type: NotificationType.COMMENT_REPLY,
-            entityType: NotificationEntityType.REPLY,
-            entityId: dto.parentId,
-            metadata: {
-              commentPreview: dto.content?.substring(0, 100),
-              postId,
-            },
-          } as NotificationPayload);
-        }
+      if (
+        parentComment &&
+        parentComment.authorId !== userId &&
+        parentComment.authorId !== post.authorId
+      ) {
+        this.eventEmitter.emit(NOTIFICATION_EVENTS.COMMENT_REPLIED, {
+          actorId: userId,
+          recipientId: parentComment.authorId,
+          type: NotificationType.COMMENT_REPLY,
+          entityType: NotificationEntityType.REPLY,
+          entityId: dto.parentId,
+          metadata: {
+            commentPreview: dto.content?.substring(0, 100),
+            postId,
+          },
+        } as NotificationPayload);
       }
     }
 
