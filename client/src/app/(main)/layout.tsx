@@ -8,8 +8,10 @@ import { useAuthStore } from "@/shared/stores/auth.store";
 
 export default function MainLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   const isLoading = useAuthStore((s) => s.isLoading);
   if (isLoading) {
@@ -24,6 +26,7 @@ export default function MainLayout({
         <main className="min-w-0 flex-1 px-4 py-4">{children}</main>
         <RightSidebar />
       </div>
+      {modal}
     </div>
   );
 }

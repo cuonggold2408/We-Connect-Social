@@ -1,0 +1,2 @@
+export const MAX_COMMENT_LENGTH = 2000;
+export const CHAR_COUNT_THRESHOLD = 1800;

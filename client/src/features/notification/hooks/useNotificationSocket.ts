@@ -41,7 +41,6 @@ export function useNotificationSocket() {
     });
 
     socket.on("new-notification", () => {
-      useNotificationStore.getState().incrementUnreadCount();
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     });
 

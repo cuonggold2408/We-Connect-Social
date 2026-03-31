@@ -18,6 +18,10 @@ import EmojiPicker, {
 import { uploadSingleImage } from "@/shared/helpers/upload-single-image";
 import { toast } from "sonner";
 import { ALLOWED_TYPES, MAX_FILE_SIZE } from "@/shared/helpers/constants";
+import {
+  CHAR_COUNT_THRESHOLD,
+  MAX_COMMENT_LENGTH,
+} from "@/features/feed/constants/comment";
 
 interface CommentInputProps {
   onSubmit: (content: string, imageUrl?: string) => void;
@@ -186,8 +190,8 @@ export const CommentInput = ({
             placeholder={placeholder}
             autoFocus={autoFocus}
             rows={1}
-            maxLength={2000}
-            className="max-h-[120px] w-full resize-none bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+            maxLength={MAX_COMMENT_LENGTH}
+            className="max-h-30 w-full resize-none bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
           />
 
           {imagePreview && (
@@ -212,6 +216,23 @@ export const CommentInput = ({
               >
                 <X className="h-3 w-3" />
               </button>
+            </div>
+          )}
+
+          {content.length >= CHAR_COUNT_THRESHOLD && (
+            <div className="flex justify-end px-1">
+              <span
+                className={cn(
+                  "text-[11px] tabular-nums",
+                  content.length >= MAX_COMMENT_LENGTH
+                    ? "font-medium text-red-500"
+                    : content.length >= MAX_COMMENT_LENGTH - 50
+                      ? "text-amber-500"
+                      : "text-gray-400",
+                )}
+              >
+                {content.length}/{MAX_COMMENT_LENGTH}
+              </span>
             </div>
           )}
 

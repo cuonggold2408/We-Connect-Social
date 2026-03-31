@@ -55,6 +55,10 @@ import type { Comment, ReactionType } from "@/features/feed/types/post";
 import { TwemojiText } from "@/shared/components/TwemojiText";
 import Image from "next/image";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
+import {
+  CHAR_COUNT_THRESHOLD,
+  MAX_COMMENT_LENGTH,
+} from "@/features/feed/constants/comment";
 
 /* ─── Action Menu ── */
 
@@ -261,11 +265,11 @@ export const CommentItem = ({
             comment.reactionCount > 0 && !isEditing && "mb-1.5",
           )}
         >
-          <div className="flex max-w-[calc(100%-2rem)] items-center gap-2">
-            <div className="relative">
+          <div className="flex max-w-full items-center gap-2">
+            <div className="relative min-w-0">
               <div
                 className={cn(
-                  "w-fit rounded-2xl px-3 py-2",
+                  "w-fit max-w-full rounded-2xl px-3 py-2",
                   !isImageOnly && "bg-gray-100",
                 )}
               >
@@ -289,7 +293,7 @@ export const CommentItem = ({
                       onKeyDown={handleEditKeyDown}
                       autoFocus
                       rows={1}
-                      maxLength={2000}
+                      maxLength={MAX_COMMENT_LENGTH}
                       className="w-full resize-none bg-transparent text-sm text-gray-800 outline-none"
                       onInput={(e) => {
                         const el = e.target as HTMLTextAreaElement;
@@ -320,9 +324,27 @@ export const CommentItem = ({
                         >
                           <X className="h-3 w-3" />
                         </button>
+
+                        {editContent.length >= CHAR_COUNT_THRESHOLD && (
+                          <>
+                            <span>·</span>
+                            <span
+                              className={cn(
+                                "tabular-nums",
+                                editContent.length >= MAX_COMMENT_LENGTH
+                                  ? "font-medium text-red-500"
+                                  : editContent.length >=
+                                      MAX_COMMENT_LENGTH - 50
+                                    ? "text-amber-500"
+                                    : "",
+                              )}
+                            >
+                              {editContent.length}/{MAX_COMMENT_LENGTH}
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
-
                     <div className="mt-1 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-[11px] text-gray-400">
                         <span>Enter để lưu</span>
@@ -357,7 +379,7 @@ export const CommentItem = ({
                 ) : (
                   <>
                     {mentionMatch ? (
-                      <p className="text-sm whitespace-pre-wrap text-gray-800">
+                      <p className="wrap-break-word text-sm whitespace-pre-wrap text-gray-800">
                         <span className="font-semibold text-blue-600">
                           @{mentionMatch[1]}
                         </span>{" "}
@@ -370,7 +392,7 @@ export const CommentItem = ({
                     ) : (
                       <TwemojiText
                         text={comment.content}
-                        className="text-sm whitespace-pre-wrap text-gray-800"
+                        className="wrap-break-word text-sm whitespace-pre-wrap text-gray-800"
                       />
                     )}
                   </>

@@ -49,10 +49,16 @@ const NotificationDropdown = ({ onClose }: Props) => {
   const handleItemClick = (notification: Notification) => {
     if (!notification.isRead) {
       const currentCount = useNotificationStore.getState().unreadCount;
+
       useNotificationStore
         .getState()
         .setUnreadCount(Math.max(0, currentCount - 1));
-      markAsRead.mutate([notification.id]);
+
+      markAsRead.mutate([notification.id], {
+        onError: () => {
+          useNotificationStore.getState().setUnreadCount(currentCount);
+        },
+      });
     }
 
     onClose();
@@ -60,12 +66,19 @@ const NotificationDropdown = ({ onClose }: Props) => {
   };
 
   const handleMarkAllAsRead = () => {
+    const currentCount = useNotificationStore.getState().unreadCount;
+
     useNotificationStore.getState().setUnreadCount(0);
-    markAllAsRead.mutate();
+
+    markAllAsRead.mutate(undefined, {
+      onError: () => {
+        useNotificationStore.getState().setUnreadCount(currentCount);
+      },
+    });
   };
 
   return (
-    <div className="flex h-[480px] w-[360px] flex-col overflow-y-auto">
+    <div className="flex h-120 w-90 flex-col overflow-y-auto">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-xl font-bold text-gray-900">Thông báo</h2>
         {unreadCount > 0 && (
