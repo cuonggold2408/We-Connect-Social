@@ -5,6 +5,7 @@ import LeftSidebar from "@/shared/components/layout/LeftSidebar";
 import RightSidebar from "@/shared/components/layout/RightSidebar";
 import Loading from "@/shared/loading/Loading";
 import { useAuthStore } from "@/shared/stores/auth.store";
+import { useFriendshipSocket } from "@/features/friends";
 
 export default function MainLayout({
   children,
@@ -14,6 +15,8 @@ export default function MainLayout({
   modal: React.ReactNode;
 }) {
   const isLoading = useAuthStore((s) => s.isLoading);
+  useFriendshipSocket();
+
   if (isLoading) {
     return <Loading />;
   }

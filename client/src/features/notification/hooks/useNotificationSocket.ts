@@ -48,6 +48,12 @@ export function useNotificationSocket() {
       useNotificationStore.getState().setUnreadCount(count);
     });
 
+    socket.on("friendship-updated", (data) => {
+      window.dispatchEvent(
+        new CustomEvent("friendship-updated", { detail: data }),
+      );
+    });
+
     socket.on("connect_error", (err) => {
       console.error("❌ Socket connection error:", err.message);
     });
