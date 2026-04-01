@@ -77,4 +77,8 @@ export class NotificationsGateway
   sendUnreadCount(userId: string, count: number) {
     this.server.to(`user:${userId}`).emit('unread-count', { count });
   }
+
+  sendFriendshipUpdate(userId: string, data: Record<string, any>) {
+    this.server.to(`user:${userId}`).emit('friendship-updated', data);
+  }
 }

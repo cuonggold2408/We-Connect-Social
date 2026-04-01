@@ -19,5 +19,6 @@ import { PrismaModule } from '@/shared/prisma/prisma.module';
     NotificationQueueService,
     NotificationQueueProcessor,
   ],
+  exports: [NotificationsGateway],
 })
 export class NotificationsModule {}

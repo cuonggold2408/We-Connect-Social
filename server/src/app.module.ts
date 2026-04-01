@@ -19,6 +19,7 @@ import { UploadModule } from '@/modules/upload/upload.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { CommentReactionsModule } from './modules/comment-reactions/comment-reactions.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { FriendshipsModule } from './modules/friendships/friendships.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     CommentsModule,
     CommentReactionsModule,
     NotificationsModule,
+    FriendshipsModule,
   ],
   controllers: [AppController],
   providers: [
