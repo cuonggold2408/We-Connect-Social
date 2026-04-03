@@ -51,3 +51,10 @@ export function usePendingReceivedCount() {
       friendshipsApi.getPendingReceivedCount().then((r) => r.count),
   });
 }
+
+export function useSuggestions() {
+  return useQuery({
+    queryKey: friendshipKeys.suggestions(),
+    queryFn: () => friendshipsApi.getSuggestions(),
+  });
+}

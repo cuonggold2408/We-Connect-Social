@@ -6,40 +6,59 @@ import {
   AvatarImage,
 } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Users, X } from "lucide-react";
 import { useSendFriendRequest } from "@/features/friends/hooks/useFriendActions";
-import type { FriendUser } from "@/features/friends/types/friendship.types";
+import { useDismissSuggestion } from "@/features/friends/hooks/useFriendActions";
+import type { Suggestion } from "@/features/friends/types/friendship.types";
 
 interface SuggestionCardProps {
-  user: FriendUser;
+  suggestion: Suggestion;
 }
 
-export function SuggestionCard({ user }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion }: SuggestionCardProps) {
   const sendRequest = useSendFriendRequest();
+  const dismiss = useDismissSuggestion();
+
+  const displayName = suggestion.fullname ?? suggestion.username;
+  const isPending = sendRequest.isPending || dismiss.isPending;
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-4">
-      <Avatar className="h-12 w-12">
-        <AvatarImage src={user.avatarUrl ?? undefined} />
-        <AvatarFallback>
-          {(user.fullname ?? user.username).charAt(0).toUpperCase()}
-        </AvatarFallback>
+      <Avatar className="h-12 w-12 shrink-0">
+        <AvatarImage src={suggestion.avatarUrl ?? undefined} />
+        <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">
-          {user.fullname ?? user.username}
-        </p>
+        <p className="truncate font-semibold">{displayName}</p>
+        {suggestion.mutualCount > 0 && (
+          <p className="flex items-center gap-1 text-sm text-gray-500">
+            <Users className="h-3 w-3" />
+            {suggestion.mutualCount} bạn chung
+          </p>
+        )}
       </div>
 
-      <Button
-        size="sm"
-        disabled={sendRequest.isPending}
-        onClick={() => sendRequest.mutate(user.id)}
-      >
-        <UserPlus className="mr-2 h-4 w-4" />
-        Kết bạn
-      </Button>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          className="cursor-pointer"
+          size="sm"
+          disabled={isPending}
+          onClick={() => sendRequest.mutate(suggestion.id)}
+        >
+          <UserPlus className="mr-2 h-4 w-4" />
+          Kết bạn
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 cursor-pointer"
+          disabled={isPending}
+          onClick={() => dismiss.mutate(suggestion.id)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

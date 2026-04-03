@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { friendshipsApi } from "@/shared/api/friendships.api";
 import { friendshipKeys } from "@/features/friends/constants/friendship.keys";
 import { toast } from "sonner";
+import { Suggestion } from "@/features/friends/types/friendship.types";
 
 export function useSendFriendRequest() {
   const queryClient = useQueryClient();
@@ -14,6 +15,9 @@ export function useSendFriendRequest() {
       });
       queryClient.invalidateQueries({
         queryKey: friendshipKeys.sentRequests(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: friendshipKeys.suggestions(),
       });
       toast.success("Đã gửi lời mời kết bạn");
     },
@@ -115,6 +119,39 @@ export function useUnfriend() {
     },
     onError: (error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+export function useDismissSuggestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => friendshipsApi.dismissSuggestion(userId),
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({
+        queryKey: friendshipKeys.suggestions(),
+      });
+
+      const previous = queryClient.getQueryData<Suggestion[]>(
+        friendshipKeys.suggestions(),
+      );
+
+      queryClient.setQueryData<Suggestion[]>(
+        friendshipKeys.suggestions(),
+        (old) => old?.filter((s) => s.id !== userId),
+      );
+
+      return { previous };
+    },
+    onError: (_err, _userId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          friendshipKeys.suggestions(),
+          context.previous,
+        );
+      }
+      toast.error("Không thể bỏ qua gợi ý");
     },
   });
 }

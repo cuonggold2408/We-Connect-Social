@@ -39,6 +39,7 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
         size="sm"
         disabled={cancelRequest.isPending}
         onClick={() => cancelRequest.mutate(request.receiver.id)}
+        className="cursor-pointer"
       >
         Hủy lời mời
       </Button>

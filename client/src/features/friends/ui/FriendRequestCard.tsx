@@ -39,7 +39,10 @@ export function FriendRequestCard({
   const actions = (
     <>
       <Button
-        className={cn(variant === "compact" && "min-w-0 flex-1")}
+        className={cn(
+          "cursor-pointer",
+          variant === "compact" && "min-w-0 flex-1",
+        )}
         size="sm"
         disabled={isPending}
         onClick={() => acceptRequest.mutate(sender.id)}
@@ -47,7 +50,10 @@ export function FriendRequestCard({
         Chấp nhận
       </Button>
       <Button
-        className={cn(variant === "compact" && "min-w-0 flex-1")}
+        className={cn(
+          "cursor-pointer",
+          variant === "compact" && "min-w-0 flex-1",
+        )}
         variant="outline"
         size="sm"
         disabled={isPending}

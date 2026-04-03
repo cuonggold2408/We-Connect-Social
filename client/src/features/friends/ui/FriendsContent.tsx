@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, UserPlus, Send, Loader2 } from "lucide-react";
+import { Users, UserPlus, Send, Loader2, UsersRound } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -14,6 +14,7 @@ import {
   useReceivedRequests,
   useSentRequests,
   useFriends,
+  useSuggestions,
 } from "@/features/friends/hooks/useFriendQueries";
 import {
   useFriendCount,
@@ -22,6 +23,7 @@ import {
 import { FriendRequestCard } from "@/features/friends/ui/FriendRequestCard";
 import { FriendCard } from "@/features/friends/ui/FriendCard";
 import { SentRequestCard } from "@/features/friends/ui/SentRequestCard";
+import { SuggestionCard } from "@/features/friends/ui/SuggestionCard";
 
 function LoadMoreButton({
   hasNextPage,
@@ -65,6 +67,9 @@ const FriendsContent = () => {
   const { data: friendCount } = useFriendCount();
   const { data: pendingCount } = usePendingReceivedCount();
 
+  const suggestionsQuery = useSuggestions();
+  const suggestions = suggestionsQuery.data ?? [];
+
   const receivedRequests =
     receivedQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const sentRequests = sentQuery.data?.pages.flatMap((p) => p.data) ?? [];
@@ -80,10 +85,10 @@ const FriendsContent = () => {
       </div>
 
       <Tabs defaultValue="received" className="w-full">
-        <TabsList className="mb-6 grid w-full grid-cols-3">
+        <TabsList className="mb-6 grid w-full grid-cols-4">
           <TabsTrigger
             value="received"
-            className="flex items-center gap-2 text-sm"
+            className="flex cursor-pointer items-center gap-2 text-sm"
           >
             <UserPlus className="h-4 w-4" />
             Lời mời nhận được
@@ -97,14 +102,9 @@ const FriendsContent = () => {
             )}
           </TabsTrigger>
 
-          <TabsTrigger value="sent" className="flex items-center gap-2 text-sm">
-            <Send className="h-4 w-4" />
-            Đã gửi
-          </TabsTrigger>
-
           <TabsTrigger
             value="friends"
-            className="flex items-center gap-2 text-sm"
+            className="flex cursor-pointer items-center gap-2 text-sm"
           >
             <Users className="h-4 w-4" />
             Bạn bè
@@ -116,6 +116,22 @@ const FriendsContent = () => {
                 {friendCount}
               </Badge>
             )}
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="sent"
+            className="flex cursor-pointer items-center gap-2 text-sm"
+          >
+            <Send className="h-4 w-4" />
+            Lời mời đã gửi
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="suggestions"
+            className="flex cursor-pointer items-center gap-2 text-sm"
+          >
+            <UsersRound className="h-4 w-4" />
+            Gợi ý kết bạn
           </TabsTrigger>
         </TabsList>
 
@@ -184,6 +200,24 @@ const FriendsContent = () => {
                 isFetchingNextPage={friendsQuery.isFetchingNextPage}
                 onLoadMore={() => friendsQuery.fetchNextPage()}
               />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="suggestions">
+          {suggestionsQuery.isLoading ? (
+            <LoadingSpinner />
+          ) : suggestions.length === 0 ? (
+            <EmptyState
+              icon={<UsersRound className="h-12 w-12 text-gray-300" />}
+              title="Không có gợi ý nào"
+              description="Hệ thống sẽ gợi ý bạn bè dựa trên bạn chung khi có dữ liệu phù hợp."
+            />
+          ) : (
+            <div className="space-y-3">
+              {suggestions.map((suggestion) => (
+                <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+              ))}
             </div>
           )}
         </TabsContent>

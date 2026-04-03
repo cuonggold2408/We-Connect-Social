@@ -5,6 +5,7 @@ export const friendshipKeys = {
   pendingCount: () => [...friendshipKeys.all, "pending-count"] as const,
   friends: () => [...friendshipKeys.all, "friends"] as const,
   friendCount: () => [...friendshipKeys.all, "friend-count"] as const,
+  suggestions: () => [...friendshipKeys.all, "suggestions"] as const,
   status: (userId: string) =>
     [...friendshipKeys.all, "status", userId] as const,
 };

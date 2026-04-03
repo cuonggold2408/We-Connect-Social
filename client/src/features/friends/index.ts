@@ -34,3 +34,8 @@ export type {
   RelationshipStatus,
   RelationshipStatusResponse,
 } from "@/features/friends/types/friendship.types";
+
+export { useSuggestions } from "@/features/friends/hooks/useFriendQueries";
+export { useDismissSuggestion } from "@/features/friends/hooks/useFriendActions";
+
+export type { Suggestion } from "@/features/friends/types/friendship.types";

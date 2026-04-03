@@ -5,6 +5,7 @@ import type {
   Friend,
   RelationshipStatusResponse,
   PaginatedResponse,
+  Suggestion,
 } from "@/features/friends/types/friendship.types";
 
 interface ApiResponse<T = undefined> {
@@ -61,4 +62,14 @@ export const friendshipsApi = {
         ApiResponse<RelationshipStatusResponse>
       >(`/friendships/status/${userId}`)
       .then((r) => r.data),
+
+  getSuggestions: (limit = 20) =>
+    api
+      .get<ApiResponse<{ data: Suggestion[] }>>("/friendships/suggestions", {
+        params: { limit },
+      })
+      .then((r) => r.data.data!.data),
+
+  dismissSuggestion: (userId: string) =>
+    api.post(`/friendships/suggestions/dismiss/${userId}`),
 };

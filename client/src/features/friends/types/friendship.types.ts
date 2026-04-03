@@ -23,6 +23,14 @@ export interface Friend {
   since: string;
 }
 
+export interface Suggestion {
+  id: string;
+  username: string;
+  fullname: string | null;
+  avatarUrl: string | null;
+  mutualCount: number;
+}
+
 export type RelationshipStatus =
   | "NONE"
   | "PENDING_OUTGOING"
