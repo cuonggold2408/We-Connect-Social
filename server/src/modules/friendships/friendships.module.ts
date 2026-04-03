@@ -4,11 +4,16 @@ import { FriendshipsController } from '@modules/friendships/friendships.controll
 import { FriendshipsService } from '@modules/friendships/friendships.service';
 import { FriendshipsRepository } from '@modules/friendships/friendships.repository';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { SuggestionCacheService } from '@modules/friendships/cache/suggestion-cache.service';
 
 @Module({
   imports: [PrismaModule, NotificationsModule],
   controllers: [FriendshipsController],
-  providers: [FriendshipsService, FriendshipsRepository],
+  providers: [
+    FriendshipsService,
+    FriendshipsRepository,
+    SuggestionCacheService,
+  ],
   exports: [FriendshipsService, FriendshipsRepository],
 })
 export class FriendshipsModule {}

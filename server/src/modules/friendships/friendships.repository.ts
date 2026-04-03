@@ -2,6 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/prisma/prisma.service';
 import { FriendshipStatus } from '@/generated/prisma/client';
 
+/*
+FoF - Friend of Friend
+*/
+export interface FoFSuggestion {
+  id: string;
+  username: string;
+  fullname: string | null;
+  avatarUrl: string | null;
+  mutualCount: number;
+}
+
 @Injectable()
 export class FriendshipsRepository {
   constructor(private prisma: PrismaService) {}
@@ -132,5 +143,83 @@ export class FriendshipsRepository {
     return friendships.map((f) =>
       f.senderId === userId ? f.receiverId : f.senderId,
     );
+  }
+
+  async findFoFSuggestions(
+    userId: string,
+    limit: number,
+  ): Promise<FoFSuggestion[]> {
+    return this.prisma.$queryRaw<FoFSuggestion[]>`
+      WITH my_friends AS (
+        SELECT CASE
+          WHEN sender_id = ${userId}::uuid THEN receiver_id
+          ELSE sender_id
+        END AS friend_id
+        FROM friendships
+        WHERE status = 'ACCEPTED'::"friendship_status"
+          AND (sender_id = ${userId}::uuid OR receiver_id = ${userId}::uuid)
+      ),
+      existing_relations AS (
+        SELECT CASE
+          WHEN sender_id = ${userId}::uuid THEN receiver_id
+          ELSE sender_id
+        END AS related_id
+        FROM friendships
+        WHERE sender_id = ${userId}::uuid OR receiver_id = ${userId}::uuid
+      ),
+      fof AS (
+        SELECT
+          CASE
+            WHEN f.sender_id = mf.friend_id THEN f.receiver_id
+            ELSE f.sender_id
+          END AS suggested_id,
+          COUNT(*)::int AS mutual_count
+        FROM friendships f
+        JOIN my_friends mf
+          ON f.status = 'ACCEPTED'::"friendship_status"
+          AND (f.sender_id = mf.friend_id OR f.receiver_id = mf.friend_id)
+        GROUP BY suggested_id
+      )
+      SELECT
+        fof.suggested_id AS "id",
+        fof.mutual_count AS "mutualCount",
+        u.username,
+        u.fullname,
+        u.avatar_url AS "avatarUrl"
+      FROM fof
+      JOIN users u ON u.id = fof.suggested_id
+        AND u.status = 'ACTIVE'::"user_status"
+      WHERE fof.suggested_id NOT IN (SELECT related_id FROM existing_relations)
+        AND fof.suggested_id != ${userId}::uuid
+      ORDER BY fof.mutual_count DESC
+      LIMIT ${limit}
+    `;
+  }
+
+  async findRandomActiveUsers(
+    userId: string,
+    limit: number,
+  ): Promise<FoFSuggestion[]> {
+    return this.prisma.$queryRaw<FoFSuggestion[]>`
+      SELECT
+        u.id,
+        u.username,
+        u.fullname,
+        u.avatar_url AS "avatarUrl",
+        0 AS "mutualCount"
+      FROM users u
+      WHERE u.status = 'ACTIVE'::"user_status"
+        AND u.id != ${userId}::uuid
+        AND u.id NOT IN (
+          SELECT CASE
+            WHEN sender_id = ${userId}::uuid THEN receiver_id
+            ELSE sender_id
+          END
+          FROM friendships
+          WHERE sender_id = ${userId}::uuid OR receiver_id = ${userId}::uuid
+        )
+      ORDER BY RANDOM()
+      LIMIT ${limit}
+    `;
   }
 }

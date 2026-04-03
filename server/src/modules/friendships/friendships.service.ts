@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { FriendshipsRepository } from './friendships.repository';
+import { FriendshipsRepository } from '@modules/friendships/friendships.repository';
 import { FeedCacheService } from '@/shared/cache/feed-cache.service';
 import { NotificationsGateway } from '@modules/notifications/notifications.gateway';
 import {
@@ -21,6 +21,7 @@ import {
   NotificationPayload,
 } from '@modules/notifications/events/notifications.events';
 import { PrismaService } from '@shared/prisma/prisma.service';
+import { SuggestionCacheService } from '@modules/friendships/cache/suggestion-cache.service';
 
 export enum RelationshipStatus {
   NONE = 'NONE',
@@ -38,10 +39,12 @@ export interface RelationshipStatusResult {
 @Injectable()
 export class FriendshipsService {
   private readonly logger = new Logger(FriendshipsService.name);
+  private readonly SUGGESTIONS_LIMIT = 20;
 
   constructor(
     private friendshipsRepository: FriendshipsRepository,
     private feedCacheService: FeedCacheService,
+    private suggestionCacheService: SuggestionCacheService,
     private notificationsGateway: NotificationsGateway,
     private eventEmitter: EventEmitter2,
     private prisma: PrismaService,
@@ -65,6 +68,16 @@ export class FriendshipsService {
     if (!receiver || receiver.status !== UserStatus.ACTIVE) {
       throw new NotFoundException('Người dùng không tồn tại');
     }
+  }
+
+  private async invalidateSuggestionsForPair(
+    userA: string,
+    userB: string,
+  ): Promise<void> {
+    await Promise.all([
+      this.suggestionCacheService.invalidate(userA),
+      this.suggestionCacheService.invalidate(userB),
+    ]);
   }
 
   async sendRequest(senderId: string, receiverId: string) {
@@ -129,6 +142,8 @@ export class FriendshipsService {
       sender: friendship.sender,
     });
 
+    await this.invalidateSuggestionsForPair(senderId, receiverId);
+
     return {
       id: friendship.id,
       status: friendship.status,
@@ -166,6 +181,11 @@ export class FriendshipsService {
     this.logger.log(`Friend request accepted: ${senderId} ↔ ${currentUserId}`);
 
     await this.feedCacheService.invalidateFriends(
+      friendship.senderId,
+      friendship.receiverId,
+    );
+
+    await this.invalidateSuggestionsForPair(
       friendship.senderId,
       friendship.receiverId,
     );
@@ -226,6 +246,8 @@ export class FriendshipsService {
       userId: senderId,
     });
 
+    await this.invalidateSuggestionsForPair(currentUserId, senderId);
+
     return { success: true };
   }
 
@@ -257,6 +279,8 @@ export class FriendshipsService {
       userId: currentUserId,
     });
 
+    await this.invalidateSuggestionsForPair(currentUserId, receiverId);
+
     return { success: true };
   }
 
@@ -282,6 +306,8 @@ export class FriendshipsService {
     this.logger.log(`Unfriended: ${currentUserId} ↔ ${friendId}`);
 
     await this.feedCacheService.invalidateFriends(currentUserId, friendId);
+
+    await this.invalidateSuggestionsForPair(currentUserId, friendId);
 
     this.emitFriendshipUpdate(friendId, 'UNFRIENDED', {
       friendshipId: friendship.id,
@@ -414,5 +440,57 @@ export class FriendshipsService {
       action,
       ...payload,
     });
+  }
+
+  async getSuggestions(userId: string, limit = this.SUGGESTIONS_LIMIT) {
+    const cached = await this.suggestionCacheService.getSuggestions(userId);
+    if (cached) {
+      this.logger.debug(`Suggestions cache HIT for ${userId}`);
+      return { data: cached };
+    }
+
+    this.logger.debug(`Suggestions cache MISS for ${userId}, computing...`);
+
+    const dismissedIds =
+      await this.suggestionCacheService.getDismissedIds(userId);
+    const dismissedSet = new Set(dismissedIds);
+
+    const fetchLimit = limit + dismissedIds.length;
+    let suggestions = await this.friendshipsRepository.findFoFSuggestions(
+      userId,
+      fetchLimit,
+    );
+
+    suggestions = suggestions.filter((s) => !dismissedSet.has(s.id));
+
+    if (suggestions.length < limit) {
+      const existingIds = new Set([
+        ...suggestions.map((s) => s.id),
+        ...dismissedIds,
+      ]);
+
+      const needed = limit - suggestions.length + dismissedIds.length;
+      const randomUsers =
+        await this.friendshipsRepository.findRandomActiveUsers(userId, needed);
+
+      const filteredRandom = randomUsers.filter((u) => !existingIds.has(u.id));
+      suggestions = [...suggestions, ...filteredRandom];
+    }
+
+    const result = suggestions.slice(0, limit);
+
+    await this.suggestionCacheService.setSuggestions(userId, result);
+
+    return { data: result };
+  }
+
+  async dismissSuggestion(userId: string, targetUserId: string) {
+    await this.suggestionCacheService.addDismissed(userId, targetUserId);
+    await this.suggestionCacheService.removeSuggestionFromCache(
+      userId,
+      targetUserId,
+    );
+
+    return { success: true };
   }
 }

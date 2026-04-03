@@ -134,6 +134,32 @@ export class FriendshipsController {
     return { count };
   }
 
+  @Get('suggestions')
+  async getSuggestions(
+    @CurrentUser('id') userId: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+    return this.friendshipsService.getSuggestions(userId, parsedLimit);
+  }
+
+  @Post('suggestions/dismiss/:userId')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({
+    short: { ttl: 60000, limit: 30 },
+    medium: { ttl: 60000, limit: 30 },
+    long: { ttl: 60000, limit: 30 },
+  })
+  async dismissSuggestion(
+    @CurrentUser('id') currentUserId: string,
+    @Param('userId', ParseUUIDPipe) targetUserId: string,
+  ) {
+    return this.friendshipsService.dismissSuggestion(
+      currentUserId,
+      targetUserId,
+    );
+  }
+
   @Get('status/:userId')
   async getRelationshipStatus(
     @CurrentUser('id') currentUserId: string,
