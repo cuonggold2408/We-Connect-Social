@@ -160,6 +160,15 @@ export class FriendshipsController {
     );
   }
 
+  @Get('user/:userId/friends')
+  async getUserFriends(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 9, 1), 50);
+    return this.friendshipsService.getFriends(userId, undefined, parsedLimit);
+  }
+
   @Get('status/:userId')
   async getRelationshipStatus(
     @CurrentUser('id') currentUserId: string,

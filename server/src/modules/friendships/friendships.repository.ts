@@ -222,4 +222,29 @@ export class FriendshipsRepository {
       LIMIT ${limit}
     `;
   }
+
+  async countMutualFriends(userA: string, userB: string): Promise<number> {
+    const result = await this.prisma.$queryRaw<[{ count: number }]>`
+    SELECT COUNT(*)::int AS "count"
+    FROM (
+      SELECT CASE
+        WHEN sender_id = ${userA}::uuid THEN receiver_id
+        ELSE sender_id
+      END AS friend_id
+      FROM friendships
+      WHERE status = 'ACCEPTED'::"friendship_status"
+        AND (sender_id = ${userA}::uuid OR receiver_id = ${userA}::uuid)
+    ) a
+    INNER JOIN (
+      SELECT CASE
+        WHEN sender_id = ${userB}::uuid THEN receiver_id
+        ELSE sender_id
+      END AS friend_id
+      FROM friendships
+      WHERE status = 'ACCEPTED'::"friendship_status"
+        AND (sender_id = ${userB}::uuid OR receiver_id = ${userB}::uuid)
+    ) b ON a.friend_id = b.friend_id
+  `;
+    return result[0].count;
+  }
 }

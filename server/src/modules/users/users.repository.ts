@@ -40,4 +40,28 @@ export class UsersRepository {
       data: { emailVerifiedAt: new Date() },
     });
   }
+
+  async updateProfile(
+    userId: string,
+    data: Prisma.UserUpdateInput,
+  ): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { ...data, updatedAt: new Date() },
+    });
+  }
+
+  async updateAvatar(userId: string, avatarUrl: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl, updatedAt: new Date() },
+    });
+  }
+
+  async updateCover(userId: string, coverUrl: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { coverUrl, updatedAt: new Date() },
+    });
+  }
 }

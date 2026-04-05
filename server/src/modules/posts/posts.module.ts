@@ -4,9 +4,10 @@ import { PostsController } from '@modules/posts/posts.controller';
 import { PostsService } from '@modules/posts/posts.service';
 import { PostsRepository } from '@modules/posts/posts.repository';
 import { ReactionsModule } from '@modules/reactions/reactions.module';
+import { FriendshipsModule } from '@modules/friendships/friendships.module';
 
 @Module({
-  imports: [PrismaModule, forwardRef(() => ReactionsModule)],
+  imports: [PrismaModule, forwardRef(() => ReactionsModule), FriendshipsModule],
   controllers: [PostsController],
   providers: [PostsService, PostsRepository],
   exports: [PostsRepository],

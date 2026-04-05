@@ -185,4 +185,91 @@ export class PostsRepository {
       include: this.feedInclude(currentUserId),
     });
   }
+
+  async findByUser(params: {
+    targetUserId: string;
+    currentUserId: string;
+    isFriend: boolean;
+    cursor?: FeedCursor;
+    limit: number;
+  }) {
+    const { targetUserId, currentUserId, cursor, limit, isFriend } = params;
+    const isOwner = targetUserId === currentUserId;
+
+    // Xác định bài viết nào được phép xem bởi người dùng hiện tại
+    let visibilityFilter: object;
+
+    if (isOwner) {
+      // Chủ profile thấy tất cả, không cần filter
+      visibilityFilter = {};
+    } else if (isFriend) {
+      // Bạn bè thấy PUBLIC + FRIENDS
+      visibilityFilter = {
+        visibility: { in: [PostVisibility.PUBLIC, PostVisibility.FRIENDS] },
+      };
+    } else {
+      // Người lạ chỉ thấy PUBLIC
+      visibilityFilter = {
+        visibility: PostVisibility.PUBLIC,
+      };
+    }
+
+    const cursorFilter = cursor
+      ? [
+          { createdAt: { lt: new Date(cursor.createdAt) } },
+          {
+            createdAt: new Date(cursor.createdAt),
+            id: { lt: cursor.id },
+          },
+        ]
+      : null;
+
+    return this.prisma.post.findMany({
+      where: {
+        AND: [
+          { authorId: targetUserId },
+          visibilityFilter,
+          ...(cursorFilter ? [{ OR: cursorFilter }] : []),
+        ],
+      },
+      take: limit + 1,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: this.feedInclude(currentUserId),
+    });
+  }
+
+  async findPhotosByUser(params: {
+    targetUserId: string;
+    isOwner: boolean;
+    isFriend: boolean;
+    limit: number;
+  }) {
+    const { targetUserId, isOwner, isFriend, limit } = params;
+
+    const postWhere: {
+      authorId: string;
+      visibility?: PostVisibility | { in: PostVisibility[] };
+    } = { authorId: targetUserId };
+
+    if (!isOwner) {
+      if (isFriend) {
+        postWhere.visibility = {
+          in: [PostVisibility.PUBLIC, PostVisibility.FRIENDS],
+        };
+      } else {
+        postWhere.visibility = PostVisibility.PUBLIC;
+      }
+    }
+
+    return this.prisma.postImage.findMany({
+      where: { post: postWhere },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        imageUrl: true,
+        postId: true,
+      },
+    });
+  }
 }

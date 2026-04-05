@@ -3,6 +3,8 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   ValidateNested,
+  IsOptional,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
@@ -27,4 +29,10 @@ export class PresignedUrlRequestDto {
   @ValidateNested({ each: true })
   @Type(() => FileMetadataDto)
   files: FileMetadataDto[];
+
+  @IsOptional()
+  @IsIn(['posts', 'avatar', 'cover'], {
+    message: 'purpose phải là posts, avatar hoặc cover',
+  })
+  purpose?: 'posts' | 'avatar' | 'cover';
 }

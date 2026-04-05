@@ -3,11 +3,15 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { FeedCursor, PostsRepository } from './posts.repository';
-import { CreatePostDto } from './dto/request/create-post.dto';
-import { PostResponseDto } from './dto/response/post-response.dto';
+import { FeedCursor, PostsRepository } from '@/modules/posts/posts.repository';
+import { CreatePostDto } from '@/modules/posts/dto/request/create-post.dto';
+import { PostResponseDto } from '@/modules/posts/dto/response/post-response.dto';
 import { FeedCacheService } from '@/shared/cache/feed-cache.service';
-import { ReactionsService } from '../reactions/reactions.service';
+import { ReactionsService } from '@/modules/reactions/reactions.service';
+import {
+  FriendshipsService,
+  RelationshipStatus,
+} from '@/modules/friendships/friendships.service';
 
 @Injectable()
 export class PostsService {
@@ -15,6 +19,7 @@ export class PostsService {
     private postsRepository: PostsRepository,
     private feedCacheService: FeedCacheService,
     private reactionsService: ReactionsService,
+    private friendshipsService: FriendshipsService,
   ) {}
 
   private encodeCursor(post: { createdAt: Date; id: string }): string {
@@ -150,5 +155,80 @@ export class PostsService {
       currentUserReaction: post.reactions?.[0]?.type ?? null,
       stats,
     });
+  }
+
+  async getPostsByUser(
+    targetUserId: string,
+    currentUserId: string,
+    cursor?: string,
+    limit: number = 10,
+  ) {
+    const isOwner = targetUserId === currentUserId;
+
+    let isFriend = false;
+    if (!isOwner) {
+      const relation = await this.friendshipsService.getRelationshipStatus(
+        currentUserId,
+        targetUserId,
+      );
+      isFriend = relation.status === RelationshipStatus.FRIENDS;
+    }
+
+    const decodedCursor = this.decodeCursor(cursor);
+
+    const posts = await this.postsRepository.findByUser({
+      targetUserId,
+      currentUserId,
+      isFriend,
+      cursor: decodedCursor ?? undefined,
+      limit,
+    });
+
+    const hasMore = posts.length > limit;
+    const sliced = hasMore ? posts.slice(0, limit) : posts;
+
+    const postsWithStats = await Promise.all(
+      sliced.map(async (post) => {
+        const stats = await this.reactionsService.getReactionStats(post.id);
+        return new PostResponseDto({
+          ...post,
+          currentUserReaction: post.reactions?.[0]?.type ?? null,
+          stats,
+        });
+      }),
+    );
+
+    const lastPost = sliced[sliced.length - 1];
+
+    return {
+      data: postsWithStats,
+      nextCursor: hasMore && lastPost ? this.encodeCursor(lastPost) : null,
+    };
+  }
+
+  async getPhotosByUser(
+    targetUserId: string,
+    currentUserId: string,
+    limit: number = 9,
+  ) {
+    const isOwner = targetUserId === currentUserId;
+
+    let isFriend = false;
+    if (!isOwner) {
+      const relation = await this.friendshipsService.getRelationshipStatus(
+        currentUserId,
+        targetUserId,
+      );
+      isFriend = relation.status === RelationshipStatus.FRIENDS;
+    }
+
+    const photos = await this.postsRepository.findPhotosByUser({
+      targetUserId,
+      isOwner,
+      isFriend,
+      limit,
+    });
+
+    return { data: photos };
   }
 }

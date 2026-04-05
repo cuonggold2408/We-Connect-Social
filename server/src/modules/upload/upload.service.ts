@@ -8,6 +8,8 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 
+export type UploadPurpose = 'posts' | 'avatar' | 'cover';
+
 export interface FileMetadata {
   mimeType: string;
   fileSize: number;
@@ -42,9 +44,29 @@ export class UploadService {
     this.publicBaseUrl = `${endpoint}/${this.bucket}`;
   }
 
+  private buildKey(
+    userId: string,
+    purpose: UploadPurpose,
+    ext: string,
+  ): string {
+    const uuid = randomUUID();
+    switch (purpose) {
+      case 'avatar':
+        return `users/${userId}/avatar/${uuid}.${ext}`;
+      case 'cover':
+        return `users/${userId}/cover/${uuid}.${ext}`;
+      case 'posts':
+      default: {
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+        return `users/${userId}/posts/${date}/${uuid}.${ext}`;
+      }
+    }
+  }
+
   async generatePresignedUrls(
     userId: string,
     files: FileMetadata[],
+    purpose: UploadPurpose = 'posts',
   ): Promise<PresignedUrlResult[]> {
     const MIME_TO_EXT: Record<string, string> = {
       'image/jpeg': 'jpg',
@@ -52,23 +74,18 @@ export class UploadService {
       'image/gif': 'gif',
       'image/webp': 'webp',
     };
-
     return Promise.all(
       files.map(async (file) => {
         const ext = MIME_TO_EXT[file.mimeType] || 'jpg';
-        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
-        const key = `users/${userId}/posts/${date}/${randomUUID()}.${ext}`;
-
+        const key = this.buildKey(userId, purpose, ext);
         const command = new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
           ContentType: file.mimeType,
         });
-
         const uploadUrl = await getSignedUrl(this.s3, command, {
           expiresIn: 300,
         });
-
         return {
           uploadUrl,
           objectUrl: `${this.publicBaseUrl}/${key}`,
