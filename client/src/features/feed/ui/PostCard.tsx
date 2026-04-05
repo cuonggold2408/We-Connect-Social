@@ -35,6 +35,7 @@ import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
 import { CommentDialog } from "@/features/feed/ui/comment/CommentDialog";
 import { TwemojiText } from "@/shared/components/TwemojiText";
+import Link from "next/link";
 
 const VISIBILITY_ICON: Record<
   PostVisibility,
@@ -97,19 +98,23 @@ const PostCard = ({
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-2">
         <div className="flex items-center gap-3">
-          <Avatar className="size-10">
-            <AvatarImage
-              src={post.author.avatarUrl || undefined}
-              alt={post.author.username[0] ?? "User Avatar"}
-            />
-            <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
-              {post.author.fullname?.[0] || post.author.username[0]}
-            </AvatarFallback>
-          </Avatar>
+          <Link href={`/${post.author.username}`}>
+            <Avatar className="size-10 cursor-pointer">
+              <AvatarImage
+                src={post.author.avatarUrl || undefined}
+                alt={post.author.username[0] ?? "User Avatar"}
+              />
+              <AvatarFallback className="bg-blue-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold text-white">
+                {post.author.fullname?.[0] || post.author.username[0]}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div>
-            <p className="text-sm font-semibold">
-              {post.author.fullname || post.author.username}
-            </p>
+            <Link href={`/${post.author.username}`}>
+              <p className="cursor-pointer text-sm font-semibold">
+                {post.author.fullname || post.author.username}
+              </p>
+            </Link>
             <p className="flex items-center gap-1 text-xs text-gray-600">
               <span>{timeAgo(post.createdAt)}</span>
               <span>·</span>

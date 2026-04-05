@@ -192,8 +192,10 @@ const Header = () => {
             <DropdownMenuContent className="mt-2 w-38">
               <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer p-2">
-                <User className="h-4 w-4" /> Trang cá nhân
+              <DropdownMenuItem className="cursor-pointer p-2" asChild>
+                <Link href={`/${user?.username}`}>
+                  <User className="h-4 w-4" /> Trang cá nhân
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer p-2">
                 <Settings className="h-4 w-4" /> Cài đặt

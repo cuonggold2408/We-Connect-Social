@@ -1,7 +1,15 @@
 "use client";
 
 import { Button } from "@/shared/components/ui/button";
-import { UserPlus, UserCheck, UserX, Clock, Loader2 } from "lucide-react";
+import {
+  UserPlus,
+  UserCheck,
+  UserX,
+  Clock,
+  Loader2,
+  ChevronDown,
+  UserMinus,
+} from "lucide-react";
 import {
   useSendFriendRequest,
   useAcceptFriendRequest,
@@ -11,6 +19,12 @@ import {
 } from "@/features/friends/hooks/useFriendActions";
 import { useRelationshipStatus } from "@/features/friends/hooks/useFriendQueries";
 import type { RelationshipStatus } from "@/features/friends/types/friendship.types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 
 interface FriendRequestButtonProps {
   userId: string;
@@ -51,6 +65,7 @@ export function FriendRequestButton({
           size={size}
           disabled={isPending}
           onClick={() => sendRequest.mutate(userId)}
+          className="cursor-pointer"
         >
           <UserPlus className="mr-2 h-4 w-4" />
           Thêm bạn bè
@@ -64,6 +79,7 @@ export function FriendRequestButton({
           size={size}
           disabled={isPending}
           onClick={() => cancelRequest.mutate(userId)}
+          className="cursor-pointer"
         >
           <Clock className="mr-2 h-4 w-4" />
           Hủy lời mời
@@ -77,6 +93,7 @@ export function FriendRequestButton({
             size={size}
             disabled={isPending}
             onClick={() => acceptRequest.mutate(userId)}
+            className="cursor-pointer"
           >
             <UserCheck className="mr-2 h-4 w-4" />
             Chấp nhận
@@ -86,6 +103,7 @@ export function FriendRequestButton({
             size={size}
             disabled={isPending}
             onClick={() => rejectRequest.mutate(userId)}
+            className="cursor-pointer"
           >
             <UserX className="mr-2 h-4 w-4" />
             Từ chối
@@ -95,15 +113,30 @@ export function FriendRequestButton({
 
     case "FRIENDS":
       return (
-        <Button
-          variant="secondary"
-          size={size}
-          disabled={isPending}
-          onClick={() => unfriend.mutate(userId)}
-        >
-          <UserCheck className="mr-2 h-4 w-4" />
-          Bạn bè
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="secondary"
+              size={size}
+              disabled={isPending}
+              className="cursor-pointer"
+            >
+              <UserCheck className="mr-2 h-4 w-4" />
+              Bạn bè
+              <ChevronDown className="ml-1 h-4 w-4 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-fit min-w-48">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              disabled={unfriend.isPending}
+              onClick={() => unfriend.mutate(userId)}
+            >
+              <UserMinus className="mr-2 h-4 w-4" />
+              Hủy kết bạn
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
 
     case "SELF":

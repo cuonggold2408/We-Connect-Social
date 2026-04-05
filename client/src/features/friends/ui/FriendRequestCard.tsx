@@ -13,6 +13,7 @@ import {
 import type { FriendRequest } from "@/features/friends/types/friendship.types";
 import { timeAgo } from "@/shared/helpers/format-time";
 import { cn } from "@/shared/lib/utils";
+import Link from "next/link";
 
 export type FriendRequestCardVariant = "default" | "compact";
 
@@ -90,13 +91,17 @@ export function FriendRequestCard({
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-4">
-      <Avatar className="h-12 w-12 shrink-0">
-        <AvatarImage src={sender.avatarUrl ?? undefined} />
-        <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <Link href={`/${sender.username}`}>
+        <Avatar className="h-12 w-12 shrink-0 cursor-pointer">
+          <AvatarImage src={sender.avatarUrl ?? undefined} />
+          <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{displayName}</p>
+        <Link href={`/${sender.username}`}>
+          <p className="cursor-pointer truncate font-semibold">{displayName}</p>
+        </Link>
         <p className="text-muted-foreground text-sm">
           {timeAgo(request.createdAt)}
         </p>

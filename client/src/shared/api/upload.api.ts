@@ -21,10 +21,11 @@ interface ApiResponse<T> {
 export const uploadApi = {
   getPresignedUrls: async (
     files: FileMetadata[],
+    purpose: "posts" | "avatar" | "cover" = "posts",
   ): Promise<PresignedUrlResponse[]> => {
     const { data } = await api.post<ApiResponse<PresignedUrlResponse[]>>(
       "/upload/presigned-urls",
-      { files },
+      { files, purpose },
     );
     return data.data;
   },

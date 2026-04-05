@@ -72,4 +72,11 @@ export const friendshipsApi = {
 
   dismissSuggestion: (userId: string) =>
     api.post(`/friendships/suggestions/dismiss/${userId}`),
+
+  getUserFriends: (userId: string, limit = 9) =>
+    api
+      .get<
+        ApiResponse<PaginatedResponse<Friend>>
+      >(`/friendships/user/${userId}/friends`, { params: { limit } })
+      .then((r) => r.data.data!),
 };

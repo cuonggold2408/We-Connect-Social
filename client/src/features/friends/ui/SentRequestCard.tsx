@@ -10,6 +10,7 @@ import { Clock } from "lucide-react";
 import { useCancelFriendRequest } from "@/features/friends/hooks/useFriendActions";
 import type { SentRequest } from "@/features/friends/types/friendship.types";
 import { timeAgo } from "@/shared/helpers/format-time";
+import Link from "next/link";
 
 interface SentRequestCardProps {
   request: SentRequest;
@@ -21,13 +22,17 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-4">
-      <Avatar className="h-12 w-12 shrink-0">
-        <AvatarImage src={request.receiver.avatarUrl ?? undefined} />
-        <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <Link href={`/${request.receiver.username}`}>
+        <Avatar className="h-12 w-12 shrink-0 cursor-pointer">
+          <AvatarImage src={request.receiver.avatarUrl ?? undefined} />
+          <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{displayName}</p>
+        <Link href={`/${request.receiver.username}`}>
+          <p className="cursor-pointer truncate font-semibold">{displayName}</p>
+        </Link>
         <p className="flex items-center gap-1 text-sm text-gray-500">
           <Clock className="h-3 w-3" />
           {timeAgo(request.createdAt)}

@@ -7,26 +7,14 @@ import type {
   PaginatedResponse,
 } from "@/features/feed/types/post";
 import { feedKeys } from "@/features/feed/constants/queryKeys";
+import { updatePostInAllCaches } from "@/shared/helpers/update-post-cache";
 
 type FeedData = InfiniteData<PaginatedResponse<Post>>;
 
 interface ReactionContext {
   previousFeed: FeedData | undefined;
   previousPost: Post | undefined;
-}
-
-function updatePostInFeed(
-  feed: FeedData,
-  postId: string,
-  updater: (post: Post) => Post,
-): FeedData {
-  return {
-    ...feed,
-    pages: feed.pages.map((page) => ({
-      ...page,
-      data: page.data.map((p) => (p.id === postId ? updater(p) : p)),
-    })),
-  };
+  previousProfilePosts: [readonly unknown[], FeedData | undefined][];
 }
 
 function buildOptimisticPost(post: Post, nextType: ReactionType | null): Post {
@@ -69,36 +57,24 @@ export function useReaction(postId: string) {
   const applyOptimistic = (nextType: ReactionType | null): ReactionContext => {
     const previousFeed = queryClient.getQueryData<FeedData>(feedKeys.all);
     const previousPost = queryClient.getQueryData<Post>(["post", postId]);
-
-    if (previousFeed) {
-      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
-        old
-          ? updatePostInFeed(old, postId, (p) =>
-              buildOptimisticPost(p, nextType),
-            )
-          : old,
-      );
-    }
-
-    if (previousPost) {
-      queryClient.setQueryData<Post>(
-        ["post", postId],
-        buildOptimisticPost(previousPost, nextType),
-      );
-    }
-
-    return { previousFeed, previousPost };
+    const previousProfilePosts = queryClient.getQueriesData<FeedData>({
+      queryKey: ["profile", "posts"],
+    });
+    updatePostInAllCaches(queryClient, postId, (p) =>
+      buildOptimisticPost(p, nextType),
+    );
+    return { previousFeed, previousPost, previousProfilePosts };
   };
-
   const rollback = (context: ReactionContext | undefined) => {
-    if (context?.previousFeed) {
+    if (!context) return;
+    if (context.previousFeed) {
       queryClient.setQueryData(feedKeys.all, context.previousFeed);
     }
-    if (context?.previousPost) {
-      queryClient.setQueryData(
-        ["post", context.previousPost.id],
-        context.previousPost,
-      );
+    if (context.previousPost) {
+      queryClient.setQueryData(["post", postId], context.previousPost);
+    }
+    for (const [key, data] of context.previousProfilePosts) {
+      queryClient.setQueryData(key, data);
     }
   };
 

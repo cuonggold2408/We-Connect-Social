@@ -5,33 +5,15 @@ import {
 } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import { commentsApi } from "@/shared/api/comments.api";
-import type {
-  Comment,
-  Post,
-  PaginatedResponse,
-} from "@/features/feed/types/post";
+import type { Comment, PaginatedResponse } from "@/features/feed/types/post";
 import { toast } from "sonner";
-import { commentKeys, feedKeys } from "@/features/feed/constants/queryKeys";
+import { commentKeys } from "@/features/feed/constants/queryKeys";
+import { updatePostInAllCaches } from "@/shared/helpers/update-post-cache";
 
-type FeedData = InfiniteData<PaginatedResponse<Post>>;
 type CommentsData = InfiniteData<PaginatedResponse<Comment>>;
 
 const COMMENTS_LIMIT = 10;
 const REPLIES_LIMIT = 5;
-
-function updatePostInFeed(
-  feed: FeedData,
-  postId: string,
-  updater: (post: Post) => Post,
-): FeedData {
-  return {
-    ...feed,
-    pages: feed.pages.map((page) => ({
-      ...page,
-      data: page.data.map((p) => (p.id === postId ? updater(p) : p)),
-    })),
-  };
-}
 
 export function useComments(postId: string, enabled = false) {
   return useInfiniteQuery({
@@ -124,14 +106,10 @@ export function useCreateComment(postId: string) {
         );
       }
 
-      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
-        old
-          ? updatePostInFeed(old, postId, (p) => ({
-              ...p,
-              commentCount: p.commentCount + 1,
-            }))
-          : old,
-      );
+      updatePostInAllCaches(queryClient, postId, (p) => ({
+        ...p,
+        commentCount: p.commentCount + 1,
+      }));
     },
 
     onError: (error) => {
@@ -153,6 +131,7 @@ export function useDeleteComment(postId: string) {
       let deletedComment: Comment | undefined;
       let totalDeleted = 1;
 
+      // 1. Bỏ bình luận khỏi danh sách bình luận chính và lưu lại bình luận đã xóa
       queryClient.setQueryData<CommentsData>(
         commentKeys.byPost(postId),
         (old) => {
@@ -174,6 +153,7 @@ export function useDeleteComment(postId: string) {
         },
       );
 
+      // 2. Nếu không phải bình luận chính, kiểm tra các bình luận phụ
       if (!deletedComment) {
         const queriesData = queryClient.getQueriesData<CommentsData>({
           queryKey: ["comments", postId, "replies"],
@@ -226,14 +206,11 @@ export function useDeleteComment(postId: string) {
         });
       }
 
-      queryClient.setQueryData<FeedData>(feedKeys.all, (old) =>
-        old
-          ? updatePostInFeed(old, postId, (p) => ({
-              ...p,
-              commentCount: Math.max(0, p.commentCount - totalDeleted),
-            }))
-          : old,
-      );
+      // 3. Cập nhật số lượng bình luận trong tất cả các cache (feed + profile + chi tiết bài viết)
+      updatePostInAllCaches(queryClient, postId, (p) => ({
+        ...p,
+        commentCount: Math.max(0, p.commentCount - totalDeleted),
+      }));
     },
 
     onError: (error) => {

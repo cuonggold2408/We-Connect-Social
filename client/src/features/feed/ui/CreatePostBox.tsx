@@ -59,6 +59,7 @@ const CreatePostBox = () => {
     mutationFn: postsApi.createPost,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: feedKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 
