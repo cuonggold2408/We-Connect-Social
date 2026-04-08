@@ -114,15 +114,18 @@ export class PostsService {
       }
     }
 
-    const postsWithStats = await Promise.all(
-      displayPosts.map(async (post) => {
-        const stats = await this.reactionsService.getReactionStats(post.id);
-        return new PostResponseDto({
+    const statsByPostId =
+      await this.reactionsService.getReactionStatsForPostIds(
+        displayPosts.map((p) => p.id),
+      );
+
+    const postsWithStats = displayPosts.map(
+      (post) =>
+        new PostResponseDto({
           ...post,
           currentUserReaction: post.reactions?.[0]?.type ?? null,
-          stats,
-        });
-      }),
+          stats: statsByPostId.get(post.id) ?? [],
+        }),
     );
 
     const lastPrimary = primaryToShow[primaryToShow.length - 1];
@@ -187,15 +190,18 @@ export class PostsService {
     const hasMore = posts.length > limit;
     const sliced = hasMore ? posts.slice(0, limit) : posts;
 
-    const postsWithStats = await Promise.all(
-      sliced.map(async (post) => {
-        const stats = await this.reactionsService.getReactionStats(post.id);
-        return new PostResponseDto({
+    const statsByPostId =
+      await this.reactionsService.getReactionStatsForPostIds(
+        sliced.map((p) => p.id),
+      );
+
+    const postsWithStats = sliced.map(
+      (post) =>
+        new PostResponseDto({
           ...post,
           currentUserReaction: post.reactions?.[0]?.type ?? null,
-          stats,
-        });
-      }),
+          stats: statsByPostId.get(post.id) ?? [],
+        }),
     );
 
     const lastPost = sliced[sliced.length - 1];

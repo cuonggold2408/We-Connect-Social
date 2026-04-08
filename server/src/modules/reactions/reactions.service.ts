@@ -103,4 +103,21 @@ export class ReactionsService {
       nextCursor: hasMore ? slicedData[slicedData.length - 1].id : null,
     };
   }
+
+  async getReactionStatsForPostIds(
+    postIds: string[],
+  ): Promise<Map<string, { type: ReactionType; count: number }[]>> {
+    const rows =
+      await this.reactionsRepository.getReactionStatsForPostIds(postIds);
+    const map = new Map<string, { type: ReactionType; count: number }[]>();
+    for (const row of rows) {
+      const list = map.get(row.postId) ?? [];
+      list.push({ type: row.type, count: row._count.type });
+      map.set(row.postId, list);
+    }
+    for (const [, list] of map) {
+      list.sort((a, b) => b.count - a.count);
+    }
+    return map;
+  }
 }

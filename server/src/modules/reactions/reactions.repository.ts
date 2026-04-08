@@ -59,4 +59,13 @@ export class ReactionsRepository {
       },
     });
   }
+
+  async getReactionStatsForPostIds(postIds: string[]) {
+    if (postIds.length === 0) return [];
+    return this.prisma.reaction.groupBy({
+      by: ['postId', 'type'],
+      where: { postId: { in: postIds } },
+      _count: { type: true },
+    });
+  }
 }
