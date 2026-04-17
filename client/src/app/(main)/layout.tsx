@@ -6,6 +6,7 @@ import RightSidebar from "@/shared/components/layout/RightSidebar";
 import Loading from "@/shared/loading/Loading";
 import { useAuthStore } from "@/shared/stores/auth.store";
 import { useFriendshipSocket } from "@/features/friends";
+import { usePathname } from "next/navigation";
 
 export default function MainLayout({
   children,
@@ -15,20 +16,27 @@ export default function MainLayout({
   modal: React.ReactNode;
 }) {
   const isLoading = useAuthStore((s) => s.isLoading);
+  const pathname = usePathname();
   useFriendshipSocket();
 
   if (isLoading) {
     return <Loading />;
   }
 
+  const isMessenger = pathname?.startsWith("/messenger");
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="mx-auto flex max-w-360">
-        <LeftSidebar />
-        <main className="min-w-0 flex-1 px-4 py-4">{children}</main>
-        <RightSidebar />
-      </div>
+      {isMessenger ? (
+        <main>{children}</main>
+      ) : (
+        <div className="mx-auto flex max-w-360">
+          <LeftSidebar />
+          <main className="min-w-0 flex-1 px-4 py-4">{children}</main>
+          <RightSidebar />
+        </div>
+      )}
       {modal}
     </div>
   );

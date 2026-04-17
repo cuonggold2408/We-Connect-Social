@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         hostname: "s3.vn-hcm-1.vietnix.cloud",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "github.com",
+        port: "",
+      },
     ],
   },
 };
