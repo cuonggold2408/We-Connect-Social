@@ -16,10 +16,12 @@ import { PostsModule } from '@/modules/posts/posts.module';
 import { FeedCacheModule } from '@/shared/cache/feed-cache.module';
 import { ReactionsModule } from '@/modules/reactions/reactions.module';
 import { UploadModule } from '@/modules/upload/upload.module';
-import { CommentsModule } from './modules/comments/comments.module';
-import { CommentReactionsModule } from './modules/comment-reactions/comment-reactions.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { FriendshipsModule } from './modules/friendships/friendships.module';
+import { CommentsModule } from '@/modules/comments/comments.module';
+import { CommentReactionsModule } from '@/modules/comment-reactions/comment-reactions.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { FriendshipsModule } from '@/modules/friendships/friendships.module';
+import { ChatModule } from '@/modules/chat/chat.module';
+import { CallsModule } from '@/modules/calls/calls.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { FriendshipsModule } from './modules/friendships/friendships.module';
     CommentReactionsModule,
     NotificationsModule,
     FriendshipsModule,
+    ChatModule,
+    CallsModule,
   ],
   controllers: [AppController],
   providers: [

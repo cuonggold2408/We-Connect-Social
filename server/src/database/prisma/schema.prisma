@@ -73,21 +73,49 @@ enum NotificationType {
   @@map("notification_type")
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+  CALL_LOG
+
+  @@map("message_type")
+}
+
+enum CallStatus {
+  RINGING
+  ACCEPTED
+  REJECTED
+  MISSED
+  ENDED
+  FAILED
+
+  @@map("call_status")
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+
+  @@map("call_type")
+}
+
 model User {
   id       String @id @default(uuid(7)) @db.Uuid
   username String @unique @db.VarChar(20)
   email    String @unique @db.VarChar(50)
   password String @db.VarChar(100)
 
-  fullname  String?     @db.VarChar(40)
-  
-  avatarUrl String?     @default("https://s3.vn-hcm-1.vietnix.cloud/avatar/no-avatar.jpg")@map("avatar_url") @db.VarChar(255)
-  coverUrl  String?     @map("cover_url") @db.VarChar(255)
+  fullname String? @db.VarChar(40)
 
-  bio       String?     @db.VarChar(150)
-  gender    UserGender?
-  birthday  DateTime?   @db.Date
-  address   String?     @db.VarChar(255)
+  avatarUrl String? @default("https://s3.vn-hcm-1.vietnix.cloud/avatar/no-avatar.jpg") @map("avatar_url") @db.VarChar(255)
+  coverUrl  String? @map("cover_url") @db.VarChar(255)
+
+  bio      String?     @db.VarChar(150)
+  gender   UserGender?
+  birthday DateTime?   @db.Date
+  address  String?     @db.VarChar(255)
 
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
   isVerifiedBadge Boolean    @default(false) @map("is_verified_badge")
@@ -119,6 +147,11 @@ model User {
   sentRequests     Friendship[]      @relation("SentFriendRequests")
   receivedRequests Friendship[]      @relation("ReceivedFriendRequests")
   commentReactions CommentReaction[]
+
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]
+  callsMade                CallSession[]             @relation("CallsMade")
+  callsReceived            CallSession[]             @relation("CallsReceived")
 
   @@index([searchVector], type: Gin, map: "idx_users_search")
   @@map("users")
@@ -293,20 +326,19 @@ model Friendship {
   @@map("friendships")
 }
 
-model Notification{
+model Notification {
   id String @id @default(uuid(7)) @db.Uuid
-  
+
   type NotificationType
 
-
   recipientId String @map("recipient_id") @db.Uuid // Người nhận Notification
-  recipient User @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient   User   @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
 
   actorId String @map("actor_id") @db.Uuid // Người thực hiện hành động
-  actor User @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  actor   User   @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
 
   entityType String @map("entity_type") @db.VarChar(20) // Loại thực thể (POST, COMMENT, FRIENDSHIP)
-  entityId String @map("entity_id") @db.Uuid 
+  entityId   String @map("entity_id") @db.Uuid
 
   metadata Json? @db.JsonB // Lưu trữ data (Comment, Lời mời kết bạn,...)
 
@@ -317,8 +349,99 @@ model Notification{
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([recipientId, isRead, createdAt(sort: Desc)])
-  @@index([recipientId,createdAt(sort: Desc)])
-  @@index([actorId, entityType,entityId])
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([actorId, entityType, entityId])
   @@map("notifications")
 }
 
+model Conversation {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  lastMessageAt DateTime? @map("last_message_at") @db.Timestamptz(6)
+
+  participants ConversationParticipant[]
+  messages     Message[]
+  callSessions CallSession[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime? @map("last_read_at") @db.Timestamptz(6)
+  isMuted    Boolean   @default(false) @map("is_muted")
+
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String @map("sender_id") @db.Uuid
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  content String?     @db.Text
+  type    MessageType @default(TEXT)
+
+  fileUrl  String? @map("file_url") @db.VarChar(500)
+  fileName String? @map("file_name") @db.VarChar(255)
+  fileSize Int?    @map("file_size")
+
+  callSessionId String?      @unique @map("call_session_id") @db.Uuid
+  callSession   CallSession? @relation(fields: [callSessionId], references: [id])
+
+  replyToId String?   @map("reply_to_id") @db.Uuid
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model CallSession {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  callerId String @map("caller_id") @db.Uuid
+  caller   User   @relation("CallsMade", fields: [callerId], references: [id], onDelete: Cascade)
+
+  calleeId String @map("callee_id") @db.Uuid
+  callee   User   @relation("CallsReceived", fields: [calleeId], references: [id], onDelete: Cascade)
+
+  type   CallType   @default(VIDEO)
+  status CallStatus @default(RINGING)
+
+  startedAt DateTime? @map("started_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+  duration  Int?
+
+  endReason String? @map("end_reason") @db.VarChar(50)
+
+  message Message?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([callerId])
+  @@index([calleeId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@map("call_sessions")
+}
