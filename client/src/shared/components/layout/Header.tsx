@@ -173,9 +173,35 @@ const Header = () => {
 
         {/* Right: Avatar + Menu + Notification */}
         <div className="flex flex-1 items-center justify-end gap-2">
-          <Button className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200">
-            <MenuGridIcon className="size-5 text-gray-600" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200 md:hidden"
+                aria-label="Menu điều hướng"
+              >
+                <MenuGridIcon className="size-5 text-gray-600" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="mt-2 w-56">
+              <DropdownMenuLabel>Điều hướng</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+                <DropdownMenuItem
+                  key={href}
+                  asChild
+                  className={cn(
+                    "cursor-pointer p-2",
+                    pathname === href && "text-blue-primary font-medium",
+                  )}
+                >
+                  <Link href={href}>
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger className="outline-none">
