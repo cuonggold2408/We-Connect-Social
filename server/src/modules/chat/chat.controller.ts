@@ -1,10 +1,15 @@
 import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
 import { ChatService } from '@/modules/chat/chat.service';
 import { CurrentUser } from '@/shared/decorators/current-user.decorator';
+import { ChatGateway } from '@/modules/chat/chat.gateway';
+import { CHAT_EVENTS } from './constants/chat.events';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Get('conversations')
   async getConversations(@CurrentUser('id') userId: string) {
@@ -16,7 +21,21 @@ export class ChatController {
     @CurrentUser('id') userId: string,
     @Body('targetUserId') targetUserId: string,
   ) {
-    return this.chatService.getOrCreateConversation(userId, targetUserId);
+    const { conversation, wasCreated } =
+      await this.chatService.getOrCreateConversation(userId, targetUserId);
+
+    if (wasCreated && conversation.otherUser) {
+      const otherUserId = conversation.otherUser.id;
+      this.chatGateway.joinUserToConversation(userId, conversation.id);
+      this.chatGateway.joinUserToConversation(otherUserId, conversation.id);
+      this.chatGateway.sendToUser(
+        otherUserId,
+        CHAT_EVENTS.CONVERSATION_CREATED,
+        { conversationId: conversation.id },
+      );
+    }
+
+    return conversation;
   }
 
   @Get('conversations/:conversationId/messages')

@@ -73,9 +73,11 @@ export class ChatRepository {
     return this.prisma.conversation.findMany({
       where: {
         participants: { some: { userId } },
-        lastMessageAt: { not: null },
       },
-      orderBy: { lastMessageAt: 'desc' },
+      orderBy: [
+        { lastMessageAt: { sort: 'desc', nulls: 'first' } },
+        { createdAt: 'desc' },
+      ],
       include: {
         participants: {
           include: { user: { select: PARTICIPANT_USER_SELECT } },

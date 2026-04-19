@@ -17,10 +17,10 @@ export enum MessageTypeDto {
 }
 
 export class SendMessageDto {
-  @IsUUID('4', { message: 'tempId phải là UUID v4' })
+  @IsUUID('all', { message: 'tempId phải là UUID hợp lệ' })
   tempId: string;
 
-  @IsUUID('4', { message: 'conversationId phải là UUID v4' })
+  @IsUUID('all', { message: 'conversationId phải là UUID hợp lệ' })
   conversationId: string;
 
   @IsOptional()
@@ -51,6 +51,6 @@ export class SendMessageDto {
   fileSize?: number;
 
   @IsOptional()
-  @IsUUID('4', { message: 'replyToId phải là UUID v4' })
+  @IsUUID('all', { message: 'replyToId phải là UUID hợp lệ' })
   replyToId?: string;
 }

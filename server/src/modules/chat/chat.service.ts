@@ -35,7 +35,10 @@ export class ChatService {
       targetUserId,
     );
     if (existing) {
-      return this.formatConversation(existing, currentUserId);
+      return {
+        conversation: await this.formatConversation(existing, currentUserId),
+        wasCreated: false,
+      };
     }
 
     const lockKey = `lock:conv:${[currentUserId, targetUserId].sort().join(':')}`;
@@ -47,7 +50,12 @@ export class ChatService {
         currentUserId,
         targetUserId,
       );
-      if (retry) return this.formatConversation(retry, currentUserId);
+      if (retry) {
+        return {
+          conversation: await this.formatConversation(retry, currentUserId),
+          wasCreated: false,
+        };
+      }
       throw new ForbiddenException('Không thể tạo hội thoại, vui lòng thử lại');
     }
 
@@ -56,7 +64,14 @@ export class ChatService {
         currentUserId,
         targetUserId,
       );
-      return this.formatConversation(conversation, currentUserId);
+
+      return {
+        conversation: await this.formatConversation(
+          conversation,
+          currentUserId,
+        ),
+        wasCreated: true,
+      };
     } finally {
       await this.redis.del(lockKey);
     }
@@ -230,7 +245,7 @@ export class ChatService {
     return friendship?.status === 'ACCEPTED';
   }
 
-  private formatConversation(
+  private async formatConversation(
     conversation: {
       id: string;
       createdAt: Date;
@@ -250,9 +265,16 @@ export class ChatService {
     const otherParticipant = conversation.participants.find(
       (p) => p.userId !== currentUserId,
     );
+
+    const isOnline = otherParticipant
+      ? (await this.redis.sismember('chat:online', otherParticipant.userId)) ===
+        1
+      : false;
+
     return {
       id: conversation.id,
       otherUser: otherParticipant?.user ?? null,
+      isOnline,
       createdAt: conversation.createdAt,
     };
   }

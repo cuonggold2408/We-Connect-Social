@@ -8,11 +8,15 @@ export const CHAT_EVENTS = {
   MESSAGE_ACK: 'message-ack',
   MESSAGE_ERROR: 'message-error',
   MESSAGES_SEEN: 'messages-seen',
+
   USER_TYPING: 'user-typing',
   USER_STOP_TYPING: 'user-stop-typing',
   USER_ONLINE: 'user-online',
   USER_OFFLINE: 'user-offline',
+
   CONVERSATION_UPDATED: 'conversation-updated',
+  CONVERSATION_CREATED: 'conversation-created',
+
   AUTH_ERROR: 'auth-error',
 } as const;
 
