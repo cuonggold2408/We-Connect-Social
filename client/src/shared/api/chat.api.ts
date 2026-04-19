@@ -47,6 +47,13 @@ export interface MessageItem {
   deletedAt: string | null;
 }
 
+export interface CreatedConversation {
+  id: string;
+  otherUser: ConversationItem["otherUser"];
+  isOnline: boolean;
+  createdAt: string;
+}
+
 interface MessagesResponse {
   data: MessageItem[];
   readStatus: { userId: string; lastReadAt: string | null }[];
@@ -80,6 +87,13 @@ export const chatApi = {
 
   getOnlineFriends: async (): Promise<string[]> => {
     const res = await api.get("/chat/online-friends");
+    return res.data.data;
+  },
+
+  startConversation: async (
+    targetUserId: string,
+  ): Promise<CreatedConversation> => {
+    const res = await api.post("/chat/conversations", { targetUserId });
     return res.data.data;
   },
 };

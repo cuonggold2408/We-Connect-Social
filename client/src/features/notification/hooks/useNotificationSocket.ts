@@ -36,10 +36,6 @@ export function useNotificationSocket() {
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
-    });
-
     socket.on("new-notification", () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     });
@@ -52,10 +48,6 @@ export function useNotificationSocket() {
       window.dispatchEvent(
         new CustomEvent("friendship-updated", { detail: data }),
       );
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket connection error:", err.message);
     });
 
     return () => {

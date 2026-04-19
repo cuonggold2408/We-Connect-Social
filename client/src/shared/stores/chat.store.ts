@@ -37,6 +37,8 @@ interface ChatStoreActions {
   setUserOffline: (userId: string) => void;
 
   markConversationRead: (conversationId: string) => void;
+
+  upsertConversation: (conversation: ConversationItem) => void;
 }
 
 type ChatStore = ChatStoreState & ChatStoreActions;
@@ -198,4 +200,17 @@ export const useChatStore = create<ChatStore>((set) => ({
         c.id === conversationId ? { ...c, unreadCount: 0 } : c,
       ),
     })),
+
+  upsertConversation: (conversation) =>
+    set((state) => {
+      const exists = state.conversations.some((c) => c.id === conversation.id);
+      if (exists) {
+        return {
+          conversations: state.conversations.map((c) =>
+            c.id === conversation.id ? { ...c, ...conversation } : c,
+          ),
+        };
+      }
+      return { conversations: [conversation, ...state.conversations] };
+    }),
 }));

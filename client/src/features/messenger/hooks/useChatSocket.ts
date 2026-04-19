@@ -1,11 +1,14 @@
+import { chatApi } from "@/shared/api/chat.api";
 import { useAuthStore } from "@/shared/stores/auth.store";
 import { useChatStore } from "@/shared/stores/chat.store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
 export function useChatSocket() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const socketRef = useRef<Socket | null>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -82,11 +85,21 @@ export function useChatSocket() {
       socketRef.current = null;
     });
 
+    socket.on("conversation-created", () =>
+      queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+    );
+
+    socket.on("connect", async () => {
+      const onlineIds = await chatApi.getOnlineFriends();
+      const setOnline = useChatStore.getState().setUserOnline;
+      onlineIds.forEach(setOnline);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 
   return socketRef;
 }
