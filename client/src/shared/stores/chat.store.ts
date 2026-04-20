@@ -8,6 +8,7 @@ interface ChatStoreState {
   messages: Map<string, MessageItem[]>;
   typingUsers: Map<string, Set<string>>;
   onlineUsers: Set<string>;
+  peerReadAt: Map<string, Map<string, string>>;
 }
 
 interface ChatStoreActions {
@@ -39,6 +40,18 @@ interface ChatStoreActions {
   markConversationRead: (conversationId: string) => void;
 
   upsertConversation: (conversation: ConversationItem) => void;
+
+  setPeerReadStatus: (
+    conversationId: string,
+    statuses: { userId: string; lastReadAt: string | null }[],
+  ) => void;
+  updatePeerReadAt: (
+    conversationId: string,
+    userId: string,
+    seenAt: string,
+  ) => void;
+
+  incrementUnread: (conversationId: string) => void;
 }
 
 type ChatStore = ChatStoreState & ChatStoreActions;
@@ -49,6 +62,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   messages: new Map(),
   typingUsers: new Map(),
   onlineUsers: new Set(),
+  peerReadAt: new Map(),
 
   setConversations: (list) => set({ conversations: list }),
   setActiveConversation: (id) => set({ activeConversationId: id }),
@@ -213,4 +227,34 @@ export const useChatStore = create<ChatStore>((set) => ({
       }
       return { conversations: [conversation, ...state.conversations] };
     }),
+
+  setPeerReadStatus: (conversationId, statuses) =>
+    set((state) => {
+      const next = new Map(state.peerReadAt);
+      const inner = new Map<string, string>();
+      for (const s of statuses) {
+        if (s.lastReadAt) inner.set(s.userId, s.lastReadAt);
+      }
+      next.set(conversationId, inner);
+      return { peerReadAt: next };
+    }),
+
+  updatePeerReadAt: (conversationId, userId, seenAt) =>
+    set((state) => {
+      const next = new Map(state.peerReadAt);
+      const inner = new Map(next.get(conversationId) ?? []);
+      const prev = inner.get(userId);
+      if (!prev || new Date(seenAt) > new Date(prev)) {
+        inner.set(userId, seenAt);
+      }
+      next.set(conversationId, inner);
+      return { peerReadAt: next };
+    }),
+
+  incrementUnread: (conversationId) =>
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId ? { ...c, unreadCount: c.unreadCount + 1 } : c,
+      ),
+    })),
 }));

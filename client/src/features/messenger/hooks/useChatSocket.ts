@@ -24,17 +24,27 @@ export function useChatSocket() {
     socketRef.current = socket;
 
     socket.on("new-message", ({ message }) => {
-      useChatStore.getState().addMessage(message.conversationId, message);
-      useChatStore
-        .getState()
-        .updateConversationLastMessage(message.conversationId, {
-          id: message.id,
-          content: message.content,
-          type: message.type,
-          senderName: message.sender.fullname,
-          senderId: message.sender.id,
-          createdAt: message.createdAt,
-        });
+      const store = useChatStore.getState();
+      const currentUserId = useAuthStore.getState().user?.id;
+
+      store.addMessage(message.conversationId, message);
+      store.updateConversationLastMessage(message.conversationId, {
+        id: message.id,
+        content: message.content,
+        type: message.type,
+        senderName: message.sender.fullname,
+        senderId: message.sender.id,
+        createdAt: message.createdAt,
+      });
+
+      const isOwnMessage = message.sender.id === currentUserId;
+      const isViewingThisConversation =
+        store.activeConversationId === message.conversationId &&
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible";
+      if (!isOwnMessage && !isViewingThisConversation) {
+        store.incrementUnread(message.conversationId);
+      }
     });
 
     socket.on("message-ack", ({ tempId, message }) => {
@@ -60,8 +70,8 @@ export function useChatSocket() {
       }
     });
 
-    socket.on("messages-seen", ({ conversationId }) => {
-      useChatStore.getState().markConversationRead(conversationId);
+    socket.on("messages-seen", ({ conversationId, userId, seenAt }) => {
+      useChatStore.getState().updatePeerReadAt(conversationId, userId, seenAt);
     });
 
     socket.on("user-typing", ({ conversationId, userId }) => {

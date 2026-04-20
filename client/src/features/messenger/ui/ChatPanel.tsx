@@ -44,10 +44,20 @@ export function ChatPanel({
   const conversationTyping = typingUsers.get(conversationId);
 
   useEffect(() => {
-    if (chatSocketRef.current?.connected) {
-      chatSocketRef.current.emit("mark-seen", { conversationId });
-      useChatStore.getState().markConversationRead(conversationId);
-    }
+    const markIfVisible = () => {
+      if (
+        document.visibilityState === "visible" &&
+        chatSocketRef.current?.connected
+      ) {
+        chatSocketRef.current.emit("mark-seen", { conversationId });
+        useChatStore.getState().markConversationRead(conversationId);
+      }
+    };
+
+    markIfVisible();
+    document.addEventListener("visibilitychange", markIfVisible);
+    return () =>
+      document.removeEventListener("visibilitychange", markIfVisible);
   }, [conversationId, chatSocketRef, conversationMessages.length]);
 
   if (!conversation) return null;
@@ -62,6 +72,7 @@ export function ChatPanel({
       />
 
       <MessageList
+        key={conversationId}
         messages={conversationMessages}
         hasMore={!!hasNextPage}
         isLoadingMore={isFetchingNextPage}

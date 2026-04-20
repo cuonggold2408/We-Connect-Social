@@ -6,6 +6,7 @@ import { messageKeys } from "@/features/messenger/constants/message.keys";
 export function useMessages(conversationId: string | null) {
   const setMessages = useChatStore((s) => s.setMessages);
   const prependMessages = useChatStore((s) => s.prependMessages);
+  const setPeerReadStatus = useChatStore((s) => s.setPeerReadStatus);
 
   return useInfiniteQuery({
     queryKey: messageKeys.conversation(conversationId ?? ""),
@@ -14,6 +15,7 @@ export function useMessages(conversationId: string | null) {
 
       if (!pageParam) {
         setMessages(conversationId!, res.data);
+        setPeerReadStatus(conversationId!, res.readStatus);
       } else {
         prependMessages(conversationId!, res.data);
       }
