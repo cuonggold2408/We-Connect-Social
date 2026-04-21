@@ -12,6 +12,8 @@ import {
   FriendshipsService,
   RelationshipStatus,
 } from '@/modules/friendships/friendships.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { TRANSLATION_EVENTS } from '@/modules/translation/constants/config';
 
 @Injectable()
 export class PostsService {
@@ -20,6 +22,7 @@ export class PostsService {
     private feedCacheService: FeedCacheService,
     private reactionsService: ReactionsService,
     private friendshipsService: FriendshipsService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   private encodeCursor(post: { createdAt: Date; id: string }): string {
@@ -57,6 +60,13 @@ export class PostsService {
       imageUrls: dto.imageUrls,
       visibility: dto.visibility,
     });
+
+    if (post.content && post.content.trim().length >= 2) {
+      this.eventEmitter.emit(TRANSLATION_EVENTS.POST_CREATED, {
+        postId: post.id,
+        content: post.content,
+      });
+    }
 
     return new PostResponseDto({
       ...post,

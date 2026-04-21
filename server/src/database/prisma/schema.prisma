@@ -101,6 +101,18 @@ enum CallType {
   @@map("call_type")
 }
 
+enum TranslatableEntity {
+  POST
+  COMMENT
+  MESSAGE
+}
+
+enum AutoTranslateMode {
+  ON_HOVER
+  ALWAYS_BUTTON
+  OFF
+}
+
 model User {
   id       String @id @default(uuid(7)) @db.Uuid
   username String @unique @db.VarChar(20)
@@ -444,4 +456,24 @@ model CallSession {
   @@index([calleeId])
   @@index([conversationId, createdAt(sort: Desc)])
   @@map("call_sessions")
+}
+
+model ContentTranslation {
+  id             String             @id @default(uuid(7)) @db.Uuid
+  entityType     TranslatableEntity
+  entityId       String             @db.Uuid
+
+  sourceLang     String             @db.VarChar(10)
+  targetLang     String             @db.VarChar(10)
+
+  sourceTextHash String             @db.VarChar(16)
+  translatedText String             @db.Text
+  
+  provider       String             @db.VarChar(30)
+  confidence     Float?
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@unique([entityType, entityId, targetLang])
+  @@index([sourceTextHash, targetLang])
+  @@map("content_translations")
 }

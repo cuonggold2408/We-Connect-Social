@@ -16,6 +16,7 @@ import {
   NotificationEntityType,
   NotificationPayload,
 } from '@modules/notifications/events/notifications.events';
+import { TRANSLATION_EVENTS } from '@/modules/translation/constants/config';
 
 @Injectable()
 export class CommentsService {
@@ -138,6 +139,13 @@ export class CommentsService {
           },
         } as NotificationPayload);
       }
+    }
+
+    if (comment.content && comment.content.trim().length >= 2) {
+      this.eventEmitter.emit(TRANSLATION_EVENTS.COMMENT_CREATED, {
+        commentId: comment.id,
+        content: comment.content,
+      });
     }
 
     return this.toResponseDto(comment, post.authorId);
