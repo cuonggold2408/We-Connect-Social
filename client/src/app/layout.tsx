@@ -5,6 +5,8 @@ import { siteConfig } from "@/shared/config/metadata";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
 import { Toaster } from "@/shared/components/ui/sonner";
 import { AuthProvider } from "@/shared/providers/AuthProvider";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import { SelectionTranslator } from "@/features/translation/ui/SelectionTranslator";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -36,7 +38,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={400}>
+              {children}
+              <SelectionTranslator />
+            </TooltipProvider>
+          </AuthProvider>
         </QueryProvider>
         <Toaster position="top-center" richColors />
       </body>

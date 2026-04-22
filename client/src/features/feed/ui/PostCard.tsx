@@ -34,8 +34,8 @@ import { REACTION_CONFIG } from "@/features/feed/constants/config";
 import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
 import { CommentDialog } from "@/features/feed/ui/comment/CommentDialog";
-import { TwemojiText } from "@/shared/components/TwemojiText";
 import Link from "next/link";
+import { TranslatableText } from "@/features/translation/ui/TranslatableText";
 
 const VISIBILITY_ICON: Record<
   PostVisibility,
@@ -133,9 +133,12 @@ const PostCard = ({
 
       {/* Content */}
       {post.content && (
-        <TwemojiText
+        <TranslatableText
           text={post.content}
-          className="px-4 pb-3 text-sm whitespace-pre-wrap text-gray-800"
+          entityType="POST"
+          entityId={post.id}
+          className="wrap-break-words px-4 pb-3 text-sm whitespace-pre-wrap text-gray-800"
+          as="p"
         />
       )}
 
