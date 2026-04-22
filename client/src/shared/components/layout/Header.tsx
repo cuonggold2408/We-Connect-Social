@@ -223,8 +223,10 @@ const Header = () => {
                   <User className="h-4 w-4" /> Trang cá nhân
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer p-2">
-                <Settings className="h-4 w-4" /> Cài đặt
+              <DropdownMenuItem className="cursor-pointer p-2" asChild>
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" /> Cài đặt
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"

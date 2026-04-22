@@ -31,17 +31,19 @@ interface SelectionState {
 }
 
 export function SelectionTranslator() {
-  const { preferredLang } = useTranslatePreference();
+  const { targetLang, sourceLang, selectionEnabled } = useTranslatePreference();
   const [selection, setSelection] = useState<SelectionState | null>(null);
 
   const query = useQuery<TranslateResponse>({
-    queryKey: ["translation", hashText(selection?.text ?? ""), preferredLang],
+    queryKey: [
+      "translation",
+      hashText(selection?.text ?? ""),
+      targetLang,
+      sourceLang,
+    ],
     queryFn: ({ signal }) =>
-      translateText(
-        { text: selection!.text, targetLang: preferredLang },
-        signal,
-      ),
-    enabled: !!selection,
+      translateText({ text: selection!.text, targetLang, sourceLang }, signal),
+    enabled: selectionEnabled && !!selection,
     staleTime: 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     retry: 1,
@@ -66,7 +68,7 @@ export function SelectionTranslator() {
       return;
     }
 
-    if (!shouldTranslate(text, preferredLang)) {
+    if (!shouldTranslate(text, targetLang)) {
       setSelection(null);
       return;
     }
@@ -92,7 +94,7 @@ export function SelectionTranslator() {
       width: rect.width,
       height: rect.height,
     });
-  }, [preferredLang]);
+  }, [targetLang]);
 
   useEffect(() => {
     const handleDblClick = (e: MouseEvent) => {
@@ -125,6 +127,8 @@ export function SelectionTranslator() {
     };
   }, [selection, close]);
 
+  if (!selectionEnabled) return null;
+
   if (!selection) return null;
 
   return (
@@ -156,7 +160,7 @@ export function SelectionTranslator() {
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-xs font-medium text-sky-900">
             <Languages className="h-3.5 w-3.5" />
-            <span>Dịch sang {preferredLang.toUpperCase()}</span>
+            <span>Dịch sang {targetLang.toUpperCase()}</span>
           </div>
           <button
             type="button"

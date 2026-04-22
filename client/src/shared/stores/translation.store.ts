@@ -1,23 +1,37 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-type AutoMode = "ON_HOVER" | "ALWAYS_BUTTON" | "OFF";
-
 interface TranslationState {
-  preferredLang: string;
-  autoTranslateMode: AutoMode;
-  setPreferredLang: (lang: string) => void;
-  setAutoMode: (mode: AutoMode) => void;
+  targetLang: string;
+  sourceLang: string;
+  hoverEnabled: boolean;
+  selectionEnabled: boolean;
+  setTargetLang: (lang: string) => void;
+  setSourceLang: (lang: string) => void;
+  setHoverEnabled: (enabled: boolean) => void;
+  setSelectionEnabled: (enabled: boolean) => void;
+  reset: () => void;
 }
+
+const DEFAULTS = {
+  targetLang: "vi",
+  sourceLang: "en",
+  hoverEnabled: true,
+  selectionEnabled: true,
+};
 
 export const useTranslationStore = create<TranslationState>()(
   persist(
     (set) => ({
-      preferredLang: "vi",
-      autoTranslateMode: "ON_HOVER",
-      setPreferredLang: (preferredLang) => set({ preferredLang }),
-      setAutoMode: (autoTranslateMode) => set({ autoTranslateMode }),
+      ...DEFAULTS,
+      setTargetLang: (targetLang) => set({ targetLang }),
+      setSourceLang: (sourceLang) => set({ sourceLang }),
+      setHoverEnabled: (hoverEnabled) => set({ hoverEnabled }),
+      setSelectionEnabled: (selectionEnabled) => set({ selectionEnabled }),
+      reset: () => set(DEFAULTS),
     }),
-    { name: "weconnect:translation-pref" },
+    {
+      name: "weconnect:translation-pref",
+    },
   ),
 );

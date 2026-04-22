@@ -12,17 +12,16 @@ interface Args {
 }
 
 export function useHoverTranslate({ text, entityType, entityId }: Args) {
-  const { preferredLang, autoTranslateMode } = useTranslatePreference();
+  const { targetLang, sourceLang, hoverEnabled } = useTranslatePreference();
   const [open, setOpen] = useState(false);
 
-  const canTranslate =
-    autoTranslateMode === "ON_HOVER" && shouldTranslate(text, preferredLang);
+  const canTranslate = hoverEnabled && shouldTranslate(text, targetLang);
 
   const query = useQuery<TranslateResponse>({
-    queryKey: ["translation", hashText(text), preferredLang],
+    queryKey: ["translation", hashText(text), targetLang, sourceLang],
     queryFn: ({ signal }) =>
       translateText(
-        { text, targetLang: preferredLang, entityType, entityId },
+        { text, targetLang, sourceLang, entityType, entityId },
         signal,
       ),
     enabled: open && canTranslate,

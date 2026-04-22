@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Users, Settings, Globe, House } from "lucide-react";
+import { MessageCircle, Users, Settings, House } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
@@ -13,10 +13,7 @@ const navItems = [
   { href: "/groups", label: "Nhóm", icon: GroupIcon },
 ];
 
-const settingsItems = [
-  { href: "/settings/account", label: "Tài khoản", icon: Settings },
-  { href: "/settings/languages", label: "Ngôn ngữ", icon: Globe },
-];
+const settingsItems = [{ href: "/settings", label: "Cài đặt", icon: Settings }];
 
 const LeftSidebar = () => {
   const pathname = usePathname();
