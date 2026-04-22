@@ -26,7 +26,7 @@ import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 import type { Post, PostVisibility } from "@/features/feed/types/post";
 import Image from "next/image";
 import { ImageLightBox } from "../ImageLightBox";
-import { TwemojiText } from "@/shared/components/TwemojiText";
+import { TranslatableText } from "@/features/translation/ui/TranslatableText";
 
 const VISIBILITY_LABEL: Record<
   PostVisibility,
@@ -136,9 +136,12 @@ export function CommentDialog({
 
             {/* Post content */}
             {post.content && (
-              <TwemojiText
+              <TranslatableText
                 text={post.content}
+                entityType="POST"
+                entityId={post.id}
                 className="pb-3 text-sm whitespace-pre-wrap text-gray-800"
+                as="p"
               />
             )}
 

@@ -80,7 +80,7 @@ export function MessageInput({ onSend, onTyping, onStopTyping }: Props) {
 
   return (
     <div className="border-t border-gray-200 px-4 py-3">
-      <div className="flex items-end gap-2">
+      <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => fileInputRef.current?.click()}
           className="hover:text-blue-primary shrink-0 rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100"

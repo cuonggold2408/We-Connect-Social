@@ -17,11 +17,23 @@ export function ConversationItem({ conversation, isSelected, onClick }: Props) {
 
   const displayName = otherUser.fullname ?? otherUser.username;
 
-  const lastMessagePreview = lastMessage
-    ? lastMessage.senderId === currentUserId
-      ? `Bạn: ${lastMessage.content ?? "Đã gửi ảnh"}`
-      : (lastMessage.content ?? "Đã gửi ảnh")
-    : "Bắt đầu trò chuyện";
+  const lastMessagePreview = (() => {
+    if (!lastMessage) return "Bắt đầu trò chuyện";
+
+    const isMine = lastMessage.senderId === currentUserId;
+
+    let preview: string;
+    if (lastMessage.type === "IMAGE") {
+      preview = isMine ? "Bạn đã gửi một hình ảnh" : "Đã gửi một hình ảnh";
+      return preview;
+    }
+    if (lastMessage.type === "CALL_LOG") {
+      return lastMessage.content?.trim() || "Cuộc gọi";
+    }
+
+    preview = lastMessage.content?.trim() || "Đã gửi một tin nhắn";
+    return isMine ? `Bạn: ${preview}` : preview;
+  })();
 
   return (
     <button

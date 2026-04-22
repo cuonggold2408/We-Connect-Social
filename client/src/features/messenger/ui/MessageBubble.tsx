@@ -10,6 +10,7 @@ import {
   computeMessageStatus,
   STATUS_LABEL,
 } from "@/features/messenger/utils/messageStatus";
+import { TranslatableText } from "@/features/translation/ui/TranslatableText";
 
 interface Props {
   message: MessageItem;
@@ -118,9 +119,13 @@ export function MessageBubble({
           )}
 
           {message.content && (
-            <p className="wrap-break-words text-sm whitespace-pre-wrap">
-              {message.content}
-            </p>
+            <TranslatableText
+              text={message.content}
+              entityType="MESSAGE"
+              entityId={message.id}
+              className="wrap-break-words text-sm whitespace-pre-wrap"
+              as="p"
+            />
           )}
 
           <div

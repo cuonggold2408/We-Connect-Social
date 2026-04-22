@@ -52,13 +52,13 @@ import { CommentInput } from "@/features/feed/ui/comment/CommentInput";
 import { ReactionListDialog } from "@/features/feed/ui/ReactionListDialog";
 import { REACTION_CONFIG } from "@/features/feed/constants/config";
 import type { Comment, ReactionType } from "@/features/feed/types/post";
-import { TwemojiText } from "@/shared/components/TwemojiText";
 import Image from "next/image";
 import { ImageLightBox } from "@/features/feed/ui/ImageLightBox";
 import {
   CHAR_COUNT_THRESHOLD,
   MAX_COMMENT_LENGTH,
 } from "@/features/feed/constants/comment";
+import { TranslatableText } from "@/features/translation/ui/TranslatableText";
 
 /* ─── Action Menu ── */
 
@@ -379,20 +379,25 @@ export const CommentItem = ({
                 ) : (
                   <>
                     {mentionMatch ? (
-                      <p className="wrap-break-word text-sm whitespace-pre-wrap text-gray-800">
+                      <p className="text-sm wrap-break-word whitespace-pre-wrap text-gray-800">
                         <span className="font-semibold text-blue-600">
                           @{mentionMatch[1]}
-                        </span>{" "}
-                        <TwemojiText
+                        </span>
+                        <TranslatableText
                           text={displayContent}
+                          entityType="COMMENT"
+                          entityId={comment.id}
                           as="span"
                           className="text-sm text-gray-800"
                         />
                       </p>
                     ) : (
-                      <TwemojiText
+                      <TranslatableText
                         text={comment.content}
-                        className="wrap-break-word text-sm whitespace-pre-wrap text-gray-800"
+                        entityType="COMMENT"
+                        entityId={comment.id}
+                        className="text-sm wrap-break-word whitespace-pre-wrap text-gray-800"
+                        as="p"
                       />
                     )}
                   </>
