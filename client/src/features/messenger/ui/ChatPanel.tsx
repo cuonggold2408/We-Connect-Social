@@ -72,7 +72,7 @@ export function ChatPanel({
       />
 
       <MessageList
-        key={conversationId}
+        key={`list-${conversationId}`}
         messages={conversationMessages}
         hasMore={!!hasNextPage}
         isLoadingMore={isFetchingNextPage}
@@ -82,6 +82,8 @@ export function ChatPanel({
       {conversationTyping && conversationTyping.size > 0 && <TypingIndicator />}
 
       <MessageInput
+        key={`input-${conversationId}`}
+        conversationId={conversationId}
         onSend={(content, options) =>
           sendMessage(conversationId, content, options)
         }
