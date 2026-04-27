@@ -21,6 +21,7 @@ import { generateRefreshToken, hashToken } from '@/shared/utils/generate-token';
 import { formatMsToHMS, parseExpiresInToMs } from '@/shared/utils/format-time';
 import { getCookieConfig } from '@/shared/config/cookie.config';
 import { UserRole } from '@/generated/prisma/enums';
+import { PrismaClient } from '@/generated/prisma/client';
 
 interface VerificationTokenPayload {
   sub: string;
@@ -32,6 +33,11 @@ interface AccessTokenPayload {
   sub: string;
   role: UserRole;
 }
+
+type PrismaTxClient = Omit<
+  PrismaClient,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
 
 @Injectable()
 export class AuthService {
@@ -85,12 +91,10 @@ export class AuthService {
     return 0;
   }
 
-  private async createAndSendVerification(
-    tx: any,
+  private buildVerificationToken(
     userId: string,
     email: string,
-    username: string,
-  ): Promise<void> {
+  ): { token: string; expiresAt: Date } {
     const expiresIn = this.configService.getOrThrow<string>(
       'JWT_VERIFICATION_EXPIRES_IN',
     );
@@ -109,22 +113,26 @@ export class AuthService {
     const decoded = this.jwtService.decode<{ exp: number }>(token);
     const expiresAt = new Date(decoded.exp * 1000);
 
-    await tx.emailVerification.create({
-      data: {
-        token,
-        userId,
-        expiresAt,
-      },
+    return { token, expiresAt };
+  }
+
+  private buildVerificationUrl(token: string): string {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    return `${frontendUrl}/verify-email?token=${token}`;
+  }
+
+  private async issueVerificationToken(
+    client: PrismaTxClient,
+    userId: string,
+    email: string,
+  ): Promise<{ verificationUrl: string }> {
+    const { token, expiresAt } = this.buildVerificationToken(userId, email);
+
+    await client.emailVerification.create({
+      data: { token, userId, expiresAt },
     });
 
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
-
-    await this.mailService.sendVerificationEmail(
-      email,
-      username,
-      verificationUrl,
-    );
+    return { verificationUrl: this.buildVerificationUrl(token) };
   }
 
   async register(dto: RegisterDto): Promise<{ message: string }> {
@@ -142,22 +150,45 @@ export class AuthService {
 
     const hashedPassword = await this.hashPassword(dto.password);
 
-    await this.prisma.executeTransaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          username: dto.username,
-          email: dto.email,
-          password: hashedPassword,
-        },
+    const { email, username, verificationUrl } =
+      await this.prisma.executeTransaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            username: dto.username,
+            email: dto.email,
+            password: hashedPassword,
+          },
+        });
+
+        const { verificationUrl } = await this.issueVerificationToken(
+          tx,
+          user.id,
+          user.email,
+        );
+
+        return {
+          email: user.email,
+          username: user.username,
+          verificationUrl,
+        };
       });
 
-      await this.createAndSendVerification(
-        tx,
-        user.id,
-        user.email,
-        user.username,
+    try {
+      await this.mailService.sendVerificationEmail(
+        email,
+        username,
+        verificationUrl,
       );
-    });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${email}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      return {
+        message:
+          'Đăng ký thành công nhưng chưa gửi được email xác thực. Vui lòng dùng chức năng gửi lại email',
+      };
+    }
 
     return {
       message: 'Vui lòng kiểm tra email để xác thực tài khoản.',
@@ -241,11 +272,16 @@ export class AuthService {
       );
     }
 
-    await this.createAndSendVerification(
+    const { verificationUrl } = await this.issueVerificationToken(
       this.prisma,
       user.id,
       user.email,
+    );
+
+    await this.mailService.sendVerificationEmail(
+      user.email,
       user.username,
+      verificationUrl,
     );
 
     return {
