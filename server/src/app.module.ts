@@ -22,7 +22,8 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
 import { FriendshipsModule } from '@/modules/friendships/friendships.module';
 import { ChatModule } from '@/modules/chat/chat.module';
 import { CallsModule } from '@/modules/calls/calls.module';
-import { TranslationModule } from './modules/translation/translation.module';
+import { TranslationModule } from '@/modules/translation/translation.module';
+import { SpeechModule } from '@/modules/speech/speech.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TranslationModule } from './modules/translation/translation.module';
     ChatModule,
     CallsModule,
     TranslationModule,
+    SpeechModule,
   ],
   controllers: [AppController],
   providers: [

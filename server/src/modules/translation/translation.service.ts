@@ -6,7 +6,6 @@ import {
 import type { ITranslationProvider } from '@/modules/translation/providers/translation-provider.interface';
 import { TranslationCacheService } from '@/modules/translation/cache/translation-cache.service';
 import { TranslationRepository } from '@/modules/translation/translation.repository';
-import { TranslatableEntity } from '@/generated/prisma/enums';
 import { TranslateRequestDto } from '@/modules/translation/dto/translate-request.dto';
 
 @Injectable()
@@ -82,7 +81,7 @@ export class TranslationService {
 
       if (translateRequestDto.entityType && translateRequestDto.entityId) {
         void this.translationRepository.upsert({
-          entityType: translateRequestDto.entityType as TranslatableEntity,
+          entityType: translateRequestDto.entityType,
           entityId: translateRequestDto.entityId,
           sourceLang: result.sourceLang,
           targetLang,
