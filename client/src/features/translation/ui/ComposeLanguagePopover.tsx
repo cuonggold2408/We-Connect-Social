@@ -13,17 +13,21 @@ import { cn } from "@/shared/lib/utils";
 interface Props {
   enabled: boolean;
   targetLang: string;
+  sourceLang: string;
   onToggle: (enabled: boolean) => void;
   onChangeLang: (lang: string) => void;
+  onChangeSourceLang: (lang: string) => void;
 }
 
 export function ComposeLanguagePopover({
   enabled,
   targetLang,
+  sourceLang,
   onToggle,
   onChangeLang,
+  onChangeSourceLang,
 }: Props) {
-  const current = LANGUAGES.find((l) => l.code === targetLang);
+  const currentTarget = LANGUAGES.find((l) => l.code === targetLang);
 
   return (
     <Popover>
@@ -41,9 +45,9 @@ export function ComposeLanguagePopover({
           )}
         >
           <Languages className="h-5 w-5" />
-          {enabled && current && (
+          {enabled && currentTarget && (
             <span className="text-xs font-semibold uppercase">
-              {current.code}
+              {currentTarget.code}
             </span>
           )}
         </button>
@@ -62,6 +66,40 @@ export function ComposeLanguagePopover({
             onCheckedChange={onToggle}
             aria-label="Bật/tắt gợi ý dịch"
           />
+        </div>
+
+        <div className="border-b border-gray-100 py-1">
+          <p className="px-4 pt-2 pb-1 text-xs font-medium text-gray-500">
+            Tôi đang nói
+            <span className="ml-1 font-normal text-gray-400">
+              (dùng cho mic)
+            </span>
+          </p>
+          <ul role="listbox" aria-label="Chọn ngôn ngữ đang nói">
+            {LANGUAGES.map((lang) => {
+              const active = lang.code === sourceLang;
+              return (
+                <li key={`src-${lang.code}`}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => onChangeSourceLang(lang.code)}
+                    className={cn(
+                      "flex w-full items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-gray-50",
+                      active && "bg-emerald-50 text-emerald-700",
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{lang.flag}</span>
+                      <span>{lang.labelVi}</span>
+                    </span>
+                    {active && <span className="text-emerald-600">✓</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         <div className="py-1">

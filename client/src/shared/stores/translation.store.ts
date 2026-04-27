@@ -1,4 +1,7 @@
-import { COMPOSE_DEFAULT_TARGET_LANG } from "@/features/translation/constants/compose";
+import {
+  COMPOSE_DEFAULT_SOURCE_LANG,
+  COMPOSE_DEFAULT_TARGET_LANG,
+} from "@/features/translation/constants/compose";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -15,12 +18,14 @@ interface TranslationState {
   setSelectionEnabled: (enabled: boolean) => void;
   setComposeEnabled: (conversationId: string, enabled: boolean) => void;
   setComposeTargetLang: (conversationId: string, lang: string) => void;
+  setComposeSourceLang: (conversationId: string, lang: string) => void;
   reset: () => void;
 }
 
 interface ComposeConversationState {
   enabled: boolean;
   targetLang: string;
+  sourceLang: string;
 }
 
 const DEFAULTS = {
@@ -30,6 +35,19 @@ const DEFAULTS = {
   selectionEnabled: true,
   composeByConversation: {} as Record<string, ComposeConversationState>,
 };
+
+const getOrInitCompose = (
+  state: TranslationState,
+  conversationId: string,
+): ComposeConversationState => ({
+  enabled: state.composeByConversation[conversationId]?.enabled ?? false,
+  targetLang:
+    state.composeByConversation[conversationId]?.targetLang ??
+    COMPOSE_DEFAULT_TARGET_LANG,
+  sourceLang:
+    state.composeByConversation[conversationId]?.sourceLang ??
+    COMPOSE_DEFAULT_SOURCE_LANG,
+});
 
 export const useTranslationStore = create<TranslationState>()(
   persist(
@@ -45,10 +63,8 @@ export const useTranslationStore = create<TranslationState>()(
           composeByConversation: {
             ...state.composeByConversation,
             [conversationId]: {
+              ...getOrInitCompose(state, conversationId),
               enabled,
-              targetLang:
-                state.composeByConversation[conversationId]?.targetLang ??
-                COMPOSE_DEFAULT_TARGET_LANG,
             },
           },
         })),
@@ -58,9 +74,18 @@ export const useTranslationStore = create<TranslationState>()(
           composeByConversation: {
             ...state.composeByConversation,
             [conversationId]: {
-              enabled:
-                state.composeByConversation[conversationId]?.enabled ?? false,
+              ...getOrInitCompose(state, conversationId),
               targetLang,
+            },
+          },
+        })),
+      setComposeSourceLang: (conversationId, sourceLang) =>
+        set((state) => ({
+          composeByConversation: {
+            ...state.composeByConversation,
+            [conversationId]: {
+              ...getOrInitCompose(state, conversationId),
+              sourceLang,
             },
           },
         })),

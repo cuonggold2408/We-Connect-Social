@@ -8,6 +8,9 @@ import { ComposeTranslationPill } from "@/features/translation/ui/ComposeTransla
 import { useComposePreference } from "@/features/translation/hooks/useComposePreference";
 import { useComposeTranslate } from "@/features/translation/hooks/useComposeTranslate";
 import { ComposeLanguagePopover } from "@/features/translation/ui/ComposeLanguagePopover";
+import { useStreamingSTT } from "@/features/speech/hooks/useStreamingSTT";
+import { MicButton } from "@/features/speech/ui/MicButton";
+import { STATUS_TEXT_VI } from "@/features/speech/constants/speech";
 
 interface Props {
   conversationId: string;
@@ -31,12 +34,59 @@ export function MessageInput({
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
+  const [interimText, setInterimText] = useState("");
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastSentAtRef = useRef(0);
 
   const compose = useComposePreference(conversationId);
+
+  const stt = useStreamingSTT({
+    language: compose.sourceLang,
+    onInterim: (t) => {
+      setInterimText(t);
+      onTyping();
+    },
+    onFinal: (t) => {
+      setInterimText("");
+      setText((prev) => {
+        const trimmed = prev.trim();
+        const next = trimmed ? `${trimmed} ${t}` : t;
+        return next;
+      });
+      onTyping();
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      });
+    },
+    onError: (err) => {
+      setInterimText("");
+      toast.error(err.message);
+    },
+  });
+
+  const flushInterimToText = () => {
+    if (!interimText.trim()) return;
+    setText((prev) => {
+      const trimmedPrev = prev.trim();
+      return trimmedPrev ? `${trimmedPrev} ${interimText}` : interimText;
+    });
+    setInterimText("");
+  };
+
+  const statusText = STATUS_TEXT_VI[stt.status];
+  const showStatusBar = !!statusText;
+
+  const displayText =
+    stt.isListening && interimText
+      ? text
+        ? `${text} ${interimText}`
+        : interimText
+      : text;
 
   const {
     suggestion,
@@ -46,7 +96,7 @@ export function MessageInput({
     text,
     targetLang: compose.targetLang,
     enabled: compose.enabled,
-    isComposing,
+    isComposing: isComposing || stt.isListening,
   });
 
   const applySuggestion = () => {
@@ -74,8 +124,13 @@ export function MessageInput({
     }
     lastSentAtRef.current = now;
 
+    if (stt.isListening) {
+      stt.stop();
+    }
+
     onSend(trimmed);
     setText("");
+    setInterimText("");
     onStopTyping();
     inputRef.current?.focus();
   };
@@ -102,6 +157,8 @@ export function MessageInput({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (stt.isListening) return;
+
     setText(e.target.value);
     onTyping();
   };
@@ -117,6 +174,15 @@ export function MessageInput({
     } finally {
       setIsSending(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const toggleMic = () => {
+    if (stt.isListening) {
+      flushInterimToText();
+      stt.stop();
+    } else {
+      void stt.start();
     }
   };
 
@@ -148,23 +214,32 @@ export function MessageInput({
             className="hidden"
           />
 
+          <MicButton
+            status={stt.status}
+            isSupported={stt.isSupported}
+            onClick={toggleMic}
+          />
+
           <ComposeLanguagePopover
             enabled={compose.enabled}
             targetLang={compose.targetLang}
+            sourceLang={compose.sourceLang}
             onToggle={compose.setEnabled}
             onChangeLang={compose.setTargetLang}
+            onChangeSourceLang={compose.setSourceLang}
           />
 
           <div className="min-w-0 flex-1">
             <textarea
               ref={inputRef}
-              value={text}
+              value={displayText}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               onCompositionStart={() => setIsComposing(true)}
               onCompositionEnd={() => setIsComposing(false)}
-              placeholder="Nhập tin nhắn..."
+              placeholder={showStatusBar ? statusText : "Nhập tin nhắn..."}
               rows={1}
+              readOnly={stt.isListening}
               className="focus:border-blue-primary focus:ring-blue-primary w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:ring-1"
             />
           </div>
