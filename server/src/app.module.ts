@@ -24,6 +24,7 @@ import { ChatModule } from '@/modules/chat/chat.module';
 import { CallsModule } from '@/modules/calls/calls.module';
 import { TranslationModule } from '@/modules/translation/translation.module';
 import { SpeechModule } from '@/modules/speech/speech.module';
+import { CallAssistModule } from '@/modules/call-assist/call-assist.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { SpeechModule } from '@/modules/speech/speech.module';
     CallsModule,
     TranslationModule,
     SpeechModule,
+    CallAssistModule,
   ],
   controllers: [AppController],
   providers: [
