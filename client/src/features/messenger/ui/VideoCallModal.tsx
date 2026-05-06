@@ -2,12 +2,21 @@
 
 import { useCallStore } from "@/shared/stores/call.store";
 import { useWebRTC } from "@/features/messenger/hooks/useWebRTC";
-import { useEffect, useRef } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  Languages,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { Socket } from "socket.io-client";
 import Image from "next/image";
 import { DEFAULT_AVATAR_URL } from "@/shared/helpers/constants";
+import { useCallAssistStore } from "@/shared/stores/call-assist.store";
+import { CallAssistPanel } from "@/features/messenger/ui/CallAssistPanel";
 
 interface Props {
   callSocketRef: React.RefObject<Socket | null>;
@@ -24,8 +33,17 @@ export function VideoCallModal({ callSocketRef }: Props) {
   const toggleMute = useCallStore((s) => s.toggleMute);
   const toggleVideo = useCallStore((s) => s.toggleVideo);
   const role = useCallStore((s) => s.role);
+  const conversationId = useCallStore((s) => s.conversationId);
+  const setCallAssistEnabled = useCallAssistStore((s) => s.setEnabled);
+  const [callAssistOpen, setCallAssistOpen] = useState(false);
 
-  const { localVideoRef, remoteVideoRef, startCall, cleanup } =
+  useEffect(() => {
+    if (!callAssistOpen && conversationId) {
+      setCallAssistEnabled(conversationId, false);
+    }
+  }, [callAssistOpen, conversationId, setCallAssistEnabled]);
+
+  const { localVideoRef, remoteVideoRef, remoteStream, startCall, cleanup } =
     useWebRTC(callSocketRef);
 
   const durationInterval = useRef<NodeJS.Timeout | null>(null);
@@ -155,6 +173,21 @@ export function VideoCallModal({ callSocketRef }: Props) {
             </button>
           )}
 
+          {conversationId && (
+            <button
+              onClick={() => setCallAssistOpen((v) => !v)}
+              className={cn(
+                "rounded-full p-4 transition-colors",
+                callAssistOpen
+                  ? "bg-sky-500 text-white"
+                  : "bg-white/20 text-white",
+              )}
+              title="Call Assist"
+            >
+              <Languages className="h-6 w-6" />
+            </button>
+          )}
+
           <button
             onClick={handleEndCall}
             className="rounded-full bg-red-500 p-4 text-white transition-colors hover:bg-red-600"
@@ -163,6 +196,14 @@ export function VideoCallModal({ callSocketRef }: Props) {
           </button>
         </div>
       </div>
+      {conversationId && callAssistOpen && (
+        <CallAssistPanel
+          conversationId={conversationId}
+          callSessionId={callSessionId}
+          remoteStream={remoteStream}
+          onClose={() => setCallAssistOpen(false)}
+        />
+      )}
     </div>
   );
 }

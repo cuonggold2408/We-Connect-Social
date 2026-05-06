@@ -1,5 +1,5 @@
 import { useCallStore } from "@/shared/stores/call.store";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 const ICE_CONFIG: RTCConfiguration = {
@@ -11,6 +11,7 @@ const ICE_CONFIG: RTCConfiguration = {
 };
 
 export function useWebRTC(callSocketRef: React.RefObject<Socket | null>) {
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const pc = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -18,7 +19,6 @@ export function useWebRTC(callSocketRef: React.RefObject<Socket | null>) {
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
   const callSessionIdRef = useRef<string | null>(null);
 
-  const callState = useCallStore((s) => s.callState);
   const callSessionId = useCallStore((s) => s.callSessionId);
   const callType = useCallStore((s) => s.callType);
   const isMuted = useCallStore((s) => s.isMuted);
@@ -59,16 +59,20 @@ export function useWebRTC(callSocketRef: React.RefObject<Socket | null>) {
     };
 
     conn.ontrack = (e) => {
+      const stream = e.streams[0];
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = e.streams[0];
+        remoteVideoRef.current.srcObject = stream;
       }
+      setRemoteStream(stream);
       useCallStore.getState().setConnected();
     };
+
     conn.onconnectionstatechange = () => {
       if (conn.connectionState === "connected") {
         useCallStore.getState().setConnected();
       }
     };
+
     conn.oniceconnectionstatechange = () => {
       const state = conn.iceConnectionState;
       if (state === "connected" || state === "completed") {
@@ -105,6 +109,7 @@ export function useWebRTC(callSocketRef: React.RefObject<Socket | null>) {
     pc.current?.close();
     localStream.current = null;
     pc.current = null;
+    setRemoteStream(null);
   }, []);
 
   useEffect(() => {
@@ -166,12 +171,14 @@ export function useWebRTC(callSocketRef: React.RefObject<Socket | null>) {
   }, [isVideoOff]);
 
   useEffect(() => {
-    if (callState === "ended") cleanup();
-  }, [callState, cleanup]);
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
 
   useEffect(() => {
     callSessionIdRef.current = callSessionId;
   }, [callSessionId]);
 
-  return { localVideoRef, remoteVideoRef, startCall, cleanup };
+  return { localVideoRef, remoteVideoRef, remoteStream, startCall, cleanup };
 }

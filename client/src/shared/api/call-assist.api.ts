@@ -1,0 +1,36 @@
+import { api } from "@/shared/api/axios";
+
+export interface SuggestCallReplyRequest {
+  conversationId: string;
+  callSessionId?: string;
+  originalSentence: string;
+  remoteLang: string;
+  userLang: string;
+  recentContext: string[];
+  userIntent?: string;
+}
+
+export interface SuggestCallReplyResponse {
+  originalQuestion: string;
+  suggestedReply: string;
+  translatedReply: string;
+}
+
+interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  data?: T;
+}
+
+export async function suggestCallReply(
+  payload: SuggestCallReplyRequest,
+  signal?: AbortSignal,
+): Promise<SuggestCallReplyResponse> {
+  const { data } = await api.post<ApiResponse<SuggestCallReplyResponse>>(
+    "/call-assist/reply-suggestions",
+    payload,
+    { signal },
+  );
+
+  return data.data!;
+}

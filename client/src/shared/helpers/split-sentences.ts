@@ -25,7 +25,7 @@ export function splitSentences(text: string): Sentence[] {
       }
       if (result.length > 0) return result;
     } catch (error) {
-      console.error("Error splitting sentences: ", error);
+      throw error;
     }
   }
 
