@@ -12,7 +12,10 @@ import {
 } from "@/shared/components/ui/select";
 import { useTranslatePreference } from "@/features/translation/hooks/useTranslatePreference";
 import { useTranslationStore } from "@/shared/stores/translation.store";
-import { LANGUAGES } from "@/features/translation/constants/languages";
+import {
+  AUTO_LANGUAGE,
+  LANGUAGES,
+} from "@/features/translation/constants/languages";
 import { SettingSection } from "@/features/settings/ui/primitives/SettingSection";
 import { SettingRow } from "@/features/settings/ui/primitives/SettingRow";
 
@@ -29,7 +32,11 @@ export function TranslationSection() {
   } = useTranslatePreference();
   const reset = useTranslationStore((s) => s.reset);
 
+  const canSwap = sourceLang !== AUTO_LANGUAGE.code;
+
   const swap = () => {
+    if (!canSwap) return;
+
     const prev = sourceLang;
     setSourceLang(targetLang);
     setTargetLang(prev);
@@ -70,11 +77,14 @@ export function TranslationSection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
+                {[AUTO_LANGUAGE, ...LANGUAGES].map((lang) => (
                   <SelectItem
                     key={lang.code}
                     value={lang.code}
-                    disabled={lang.code === targetLang}
+                    disabled={
+                      lang.code !== AUTO_LANGUAGE.code &&
+                      lang.code === targetLang
+                    }
                   >
                     <span className="mr-1.5">{lang.flag}</span>
                     {lang.label}
@@ -86,9 +96,14 @@ export function TranslationSection() {
             <button
               type="button"
               onClick={swap}
+              disabled={!canSwap}
               className="group rounded p-1 hover:bg-gray-100"
               aria-label="Đảo chiều"
-              title="Đảo chiều"
+              title={
+                canSwap
+                  ? "Đảo chiều"
+                  : "Không thể đảo chiều khi nguồn là tự động phát hiện"
+              }
             >
               <ArrowLeftRight className="h-4 w-4 text-gray-400 transition-transform group-hover:rotate-180 group-hover:text-sky-600" />
             </button>
@@ -116,7 +131,7 @@ export function TranslationSection() {
 
       <SettingRow
         title="Khôi phục mặc định"
-        description="Đưa mọi tuỳ chọn dịch về giá trị ban đầu (en → vi)"
+        description="Đưa mọi tuỳ chọn dịch về giá trị ban đầu (phát hiện ngôn ngữ → vi)"
         control={
           <Button variant="outline" size="sm" onClick={reset}>
             <RotateCcw className="mr-1 h-3.5 w-3.5" />

@@ -30,7 +30,7 @@ interface ComposeConversationState {
 
 const DEFAULTS = {
   targetLang: "vi",
-  sourceLang: "en",
+  sourceLang: "auto",
   hoverEnabled: true,
   selectionEnabled: true,
   composeByConversation: {} as Record<string, ComposeConversationState>,
