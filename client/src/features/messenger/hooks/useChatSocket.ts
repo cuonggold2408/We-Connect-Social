@@ -9,6 +9,7 @@ export function useChatSocket() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -22,6 +23,26 @@ export function useChatSocket() {
     });
 
     socketRef.current = socket;
+
+    const startHeartbeat = () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(() => {
+        if (socket.connected) socket.emit("heartbeat");
+      }, 30000);
+    };
+    const stopHeartbeat = () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    };
+
+    socket.on("connect", async () => {
+      startHeartbeat();
+      const snapshot = await chatApi.getPresenceSnapshot();
+      useChatStore.getState().reconcilePresence(snapshot);
+    });
+    socket.on("presence-snapshot", (snapshot) => {
+      useChatStore.getState().reconcilePresence(snapshot);
+    });
 
     socket.on("new-message", ({ message }) => {
       const store = useChatStore.getState();
@@ -85,9 +106,13 @@ export function useChatSocket() {
     socket.on("user-online", ({ userId }) => {
       useChatStore.getState().setUserOnline(userId);
     });
+    socket.on("user-offline", ({ userId, lastSeen }) => {
+      useChatStore.getState().setUserOffline(userId, lastSeen);
+    });
 
-    socket.on("user-offline", ({ userId }) => {
-      useChatStore.getState().setUserOffline(userId);
+    socket.on("disconnect", () => {
+      stopHeartbeat();
+      useChatStore.getState().clearAllPresence();
     });
 
     socket.on("auth-error", () => {
@@ -99,13 +124,8 @@ export function useChatSocket() {
       queryClient.invalidateQueries({ queryKey: ["conversations"] }),
     );
 
-    socket.on("connect", async () => {
-      const onlineIds = await chatApi.getOnlineFriends();
-      const setOnline = useChatStore.getState().setUserOnline;
-      onlineIds.forEach(setOnline);
-    });
-
     return () => {
+      stopHeartbeat();
       socket.disconnect();
       socketRef.current = null;
     };

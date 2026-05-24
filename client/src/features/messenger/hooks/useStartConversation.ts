@@ -26,6 +26,8 @@ export function useStartConversation({ onSuccess, onError }: Options = {}) {
           data.isOnline ||
           useChatStore.getState().onlineUsers.has(data.otherUser.id),
         lastMessageAt: null,
+        lastSeen:
+          useChatStore.getState().lastSeenMap.get(data.otherUser.id) ?? null,
       };
 
       upsertConversation(item);

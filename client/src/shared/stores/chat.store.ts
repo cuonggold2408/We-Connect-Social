@@ -9,11 +9,19 @@ interface ChatStoreState {
   typingUsers: Map<string, Set<string>>;
   onlineUsers: Set<string>;
   peerReadAt: Map<string, Map<string, string>>;
+  lastSeenMap: Map<string, string | null>;
 }
 
 interface ChatStoreActions {
   setConversations: (list: ConversationItem[]) => void;
   setActiveConversation: (id: string | null) => void;
+  reconcilePresence: (s: {
+    onlineUserIds: string[];
+    lastSeen: Record<string, string | null>;
+  }) => void;
+  setUserOnline: (userId: string) => void;
+  setUserOffline: (userId: string, lastSeen: string | null) => void;
+  clearAllPresence: () => void;
 
   updateConversationLastMessage: (
     conversationId: string,
@@ -33,9 +41,6 @@ interface ChatStoreActions {
 
   setUserTyping: (conversationId: string, userId: string) => void;
   clearUserTyping: (conversationId: string, userId: string) => void;
-
-  setUserOnline: (userId: string) => void;
-  setUserOffline: (userId: string) => void;
 
   markConversationRead: (conversationId: string) => void;
 
@@ -63,6 +68,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   typingUsers: new Map(),
   onlineUsers: new Set(),
   peerReadAt: new Map(),
+  lastSeenMap: new Map(),
 
   setConversations: (list) => set({ conversations: list }),
   setActiveConversation: (id) => set({ activeConversationId: id }),
@@ -184,30 +190,6 @@ export const useChatStore = create<ChatStore>((set) => ({
       return { typingUsers: updated };
     }),
 
-  setUserOnline: (userId) =>
-    set((state) => {
-      const updated = new Set(state.onlineUsers);
-      updated.add(userId);
-      return {
-        onlineUsers: updated,
-        conversations: state.conversations.map((c) =>
-          c.otherUser.id === userId ? { ...c, isOnline: true } : c,
-        ),
-      };
-    }),
-
-  setUserOffline: (userId) =>
-    set((state) => {
-      const updated = new Set(state.onlineUsers);
-      updated.delete(userId);
-      return {
-        onlineUsers: updated,
-        conversations: state.conversations.map((c) =>
-          c.otherUser.id === userId ? { ...c, isOnline: false } : c,
-        ),
-      };
-    }),
-
   markConversationRead: (conversationId) =>
     set((state) => ({
       conversations: state.conversations.map((c) =>
@@ -256,5 +238,63 @@ export const useChatStore = create<ChatStore>((set) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId ? { ...c, unreadCount: c.unreadCount + 1 } : c,
       ),
+    })),
+
+  reconcilePresence: ({ onlineUserIds, lastSeen }) =>
+    set((state) => {
+      const onlineUsers = new Set(onlineUserIds);
+      const lastSeenMap = new Map(Object.entries(lastSeen));
+      return {
+        onlineUsers,
+        lastSeenMap,
+        conversations: state.conversations.map((c) => ({
+          ...c,
+          isOnline: onlineUsers.has(c.otherUser.id),
+          lastSeen: lastSeen[c.otherUser.id] ?? c.lastSeen,
+        })),
+      };
+    }),
+
+  setUserOnline: (userId) =>
+    set((state) => {
+      const onlineUsers = new Set(state.onlineUsers);
+      onlineUsers.add(userId);
+      const lastSeenMap = new Map(state.lastSeenMap);
+      lastSeenMap.delete(userId);
+      return {
+        onlineUsers,
+        lastSeenMap,
+        conversations: state.conversations.map((c) =>
+          c.otherUser.id === userId
+            ? { ...c, isOnline: true, lastSeen: null }
+            : c,
+        ),
+      };
+    }),
+
+  setUserOffline: (userId, lastSeen) =>
+    set((state) => {
+      const onlineUsers = new Set(state.onlineUsers);
+      onlineUsers.delete(userId);
+      const lastSeenMap = new Map(state.lastSeenMap);
+      lastSeenMap.set(userId, lastSeen ?? new Date().toISOString());
+      return {
+        onlineUsers,
+        lastSeenMap,
+        conversations: state.conversations.map((c) =>
+          c.otherUser.id === userId
+            ? { ...c, isOnline: false, lastSeen: lastSeenMap.get(userId)! }
+            : c,
+        ),
+      };
+    }),
+
+  clearAllPresence: () =>
+    set((state) => ({
+      onlineUsers: new Set(),
+      conversations: state.conversations.map((c) => ({
+        ...c,
+        isOnline: false,
+      })),
     })),
 }));

@@ -69,6 +69,7 @@ export function ChatPanel({
         isOnline={conversation.isOnline}
         callSocketRef={callSocketRef}
         conversationId={conversationId}
+        lastSeen={conversation.lastSeen}
       />
 
       <MessageList

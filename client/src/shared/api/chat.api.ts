@@ -20,6 +20,12 @@ export interface ConversationItem {
   unreadCount: number;
   isOnline: boolean;
   lastMessageAt: string | null;
+  lastSeen: string | null;
+}
+
+export interface PresenceSnapshot {
+  onlineUserIds: string[];
+  lastSeen: Record<string, string | null>;
 }
 
 export interface MessageItem {
@@ -94,6 +100,11 @@ export const chatApi = {
     targetUserId: string,
   ): Promise<CreatedConversation> => {
     const res = await api.post("/chat/conversations", { targetUserId });
+    return res.data.data;
+  },
+
+  getPresenceSnapshot: async (): Promise<PresenceSnapshot> => {
+    const res = await api.get("/chat/online-friends");
     return res.data.data;
   },
 };

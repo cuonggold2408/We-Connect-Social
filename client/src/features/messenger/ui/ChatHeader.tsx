@@ -1,8 +1,13 @@
+"use client";
+
 import { Phone, Video } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useCallStore } from "@/shared/stores/call.store";
 import type { Socket } from "socket.io-client";
 import Image from "next/image";
 import { DEFAULT_AVATAR_URL } from "@/shared/helpers/constants";
+import { cn } from "@/shared/lib/utils";
+import { formatPresence } from "@/shared/helpers/format-presence";
 
 interface OtherUser {
   id: string;
@@ -14,6 +19,7 @@ interface OtherUser {
 interface Props {
   otherUser: OtherUser;
   isOnline: boolean;
+  lastSeen: string | null;
   callSocketRef: React.RefObject<Socket | null>;
   conversationId: string;
 }
@@ -21,10 +27,20 @@ interface Props {
 export function ChatHeader({
   otherUser,
   isOnline,
+  lastSeen,
   callSocketRef,
   conversationId,
 }: Props) {
   const callState = useCallStore((s) => s.callState);
+
+  const [forceTick, setForceTick] = useState(0);
+  useEffect(() => {
+    if (isOnline || !lastSeen) return;
+    const id = setInterval(() => setForceTick((x) => x + 1), 60000);
+    return () => clearInterval(id);
+  }, [isOnline, lastSeen]);
+
+  const presence = formatPresence(isOnline, lastSeen);
 
   const initiateCall = (type: "AUDIO" | "VIDEO") => {
     if (callState !== "idle" || !callSocketRef.current) return;
@@ -54,7 +70,7 @@ export function ChatHeader({
             height={40}
             priority
           />
-          {isOnline && (
+          {presence.showDot && (
             <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
           )}
         </div>
@@ -62,8 +78,19 @@ export function ChatHeader({
           <p className="font-semibold text-gray-900">
             {otherUser.fullname ?? otherUser.username}
           </p>
-          <p className="text-xs text-gray-500">
-            {isOnline ? "Đang hoạt động" : "Không hoạt động"}
+          <p
+            className={cn(
+              "text-xs",
+              presence.variant === "online"
+                ? "text-green-600"
+                : presence.variant === "recent"
+                  ? "text-gray-600"
+                  : presence.variant === "away"
+                    ? "text-gray-500"
+                    : "text-gray-400",
+            )}
+          >
+            {presence.text}
           </p>
         </div>
       </div>
@@ -73,6 +100,7 @@ export function ChatHeader({
           onClick={() => initiateCall("AUDIO")}
           disabled={callState !== "idle"}
           className="hover:text-blue-primary rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-50"
+          aria-label="Gọi thoại"
         >
           <Phone className="h-5 w-5" />
         </button>
@@ -80,6 +108,7 @@ export function ChatHeader({
           onClick={() => initiateCall("VIDEO")}
           disabled={callState !== "idle"}
           className="hover:text-blue-primary rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-50"
+          aria-label="Gọi video"
         >
           <Video className="h-5 w-5" />
         </button>
