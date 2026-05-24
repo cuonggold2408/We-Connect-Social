@@ -4,6 +4,7 @@ Tài liệu này mô tả quy trình cài đặt và khởi chạy hệ thống 
 
 ## Mục lục
 
+- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
 - [Yêu cầu môi trường](#yêu-cầu-môi-trường)
 - [Tải mã nguồn](#tải-mã-nguồn)
 - [Cấu hình biến môi trường (server)](#cấu-hình-biến-môi-trường-server)
@@ -14,15 +15,62 @@ Tài liệu này mô tả quy trình cài đặt và khởi chạy hệ thống 
 - [Một số lỗi thường gặp](#một-số-lỗi-thường-gặp)
 - [Giao diện hệ thống](#giao-diện-hệ-thống)
 
+## Công nghệ sử dụng
+
+Hệ thống được xây dựng theo mô hình client–server, sử dụng đồng nhất **TypeScript** trên cả hai phía. Các lựa chọn công nghệ được tổng hợp dưới đây.
+
+### Frontend
+
+| Công nghệ             | Mục đích sử dụng                            |
+| --------------------- | ------------------------------------------- |
+| Next.js 16 + React 19 | App Router, Server Components               |
+| TailwindCSS 4         | Styling theo tiện ích                       |
+| ShadcnUI              | Thư viện về component UI                    |
+| TanStack Query        | Quản lý server state, cache, infinite query |
+| Zustand               | Quản lý client state                        |
+| React Hook Form + Zod | Quản lý form và validate dữ liệu            |
+| Socket.IO Client      | Giao tiếp real-time với server              |
+| Framer Motion         | Hiệu ứng chuyển động                        |
+| Axios                 | HTTP client gọi REST API                    |
+
+### Backend
+
+| Công nghệ                           | Mục đích sử dụng                                   |
+| ----------------------------------- | -------------------------------------------------- |
+| NestJS 11                           | Framework backend                                  |
+| Prisma 7                            | ORM, migration và type-safe database client        |
+| Socket.IO                           | WebSocket gateway, đồng bộ event giữa các instance |
+| BullMQ                              | Hàng đợi nền trên Redis                            |
+| `@nestjs/throttler` + Redis storage | Rate limit (sliding window) cho các API nhạy cảm   |
+| `@nestjs/event-emitter`             | Event bus nội bộ, tách rời các module nghiệp vụ    |
+| React Email + Resend                | Soạn template email và gửi mail giao dịch          |
+
+### Cơ sở dữ liệu & Hạ tầng
+
+| Thành phần     | Mục đích sử dụng                          |
+| -------------- | ----------------------------------------- |
+| PostgreSQL     | CSDL chính                                |
+| Redis          | Cache, hàng đợi BullMQ, rate limit        |
+| LibreTranslate | Dịch vụ dịch văn bản tự host qua REST API |
+| Docker Compose | Đóng gói và khởi chạy hạ tầng cục bộ      |
+
+### Dịch vụ bên thứ ba
+
+| Dịch vụ                   | Mục đích sử dụng                                  |
+| ------------------------- | ------------------------------------------------- |
+| Resend                    | Gửi email                                         |
+| Deepgram                  | API Speech-to-Text                                |
+| Vietnix S3 Object Storage | Lưu trữ ảnh, video, tệp đính kèm (qua AWS SDK v3) |
+
 ## Yêu cầu môi trường
 
 Trước khi cài đặt, máy phát triển cần chuẩn bị các công cụ sau:
 
-| Công cụ | Phiên bản / Ghi chú |
-|---|---|
-| Node.js | 22 LTS hoặc mới hơn |
+| Công cụ        | Phiên bản / Ghi chú                            |
+| -------------- | ---------------------------------------------- |
+| Node.js        | 22 LTS hoặc mới hơn                            |
 | Docker Desktop | Dùng để chạy PostgreSQL, Redis, LibreTranslate |
-| Git | Dùng để tải mã nguồn dự án |
+| Git            | Dùng để tải mã nguồn dự án                     |
 
 Ngoài ra, hệ thống sử dụng một số dịch vụ bên thứ ba:
 
@@ -195,14 +243,14 @@ Sau khi khởi chạy toàn bộ hệ thống, thực hiện các bước kiểm
 
 ## Một số lỗi thường gặp
 
-| Lỗi | Nguyên nhân thường gặp / Cách kiểm tra |
-|---|---|
+| Lỗi                              | Nguyên nhân thường gặp / Cách kiểm tra                                                                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Không kết nối được cơ sở dữ liệu | Kiểm tra Docker Compose đã chạy chưa; cổng PostgreSQL có bị trùng với dịch vụ khác không; `DATABASE_URL` có khớp với `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` không. |
-| `Redis connection refused` | Kiểm tra container Redis đang chạy; xác nhận `REDIS_HOST` và `REDIS_PORT`. |
-| Client gọi API bị lỗi CORS | Kiểm tra `FRONTEND_URL` ở server có trùng với địa chỉ chạy client (`http://localhost:3000`) không. |
-| Không gửi được email xác minh | Kiểm tra `RESEND_API_KEY` và `MAIL_FROM`. |
-| Không tải được ảnh / tệp tin | Kiểm tra lại các khoá dịch vụ S3 (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`). |
-| Ghi âm không hoạt động | Kiểm tra `DEEPGRAM_API_KEY`, quyền microphone của trình duyệt và khả năng mở WebSocket tới Deepgram. |
+| `Redis connection refused`       | Kiểm tra container Redis đang chạy; xác nhận `REDIS_HOST` và `REDIS_PORT`.                                                                                          |
+| Client gọi API bị lỗi CORS       | Kiểm tra `FRONTEND_URL` ở server có trùng với địa chỉ chạy client (`http://localhost:3000`) không.                                                                  |
+| Không gửi được email xác minh    | Kiểm tra `RESEND_API_KEY` và `MAIL_FROM`.                                                                                                                           |
+| Không tải được ảnh / tệp tin     | Kiểm tra lại các khoá dịch vụ S3 (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`).                                                                    |
+| Ghi âm không hoạt động           | Kiểm tra `DEEPGRAM_API_KEY`, quyền microphone của trình duyệt và khả năng mở WebSocket tới Deepgram.                                                                |
 
 ---
 
@@ -212,33 +260,32 @@ Sau khi hoàn tất các bước trên, hệ thống **We-Connect** sẽ hoạt 
 
 ### 1. Xác thực người dùng
 
-| Đăng ký | Xác thực email | Đăng nhập |
-|:---:|:---:|:---:|
+|                  Đăng ký                   |                      Xác thực email                      |                   Đăng nhập                    |
+| :----------------------------------------: | :------------------------------------------------------: | :--------------------------------------------: |
 | ![Đăng ký](<docs/screenshots/Đăng kí.png>) | ![Xác thực email](<docs/screenshots/Xác thực email.png>) | ![Đăng nhập](<docs/screenshots/Đăng nhập.png>) |
 
 ### 2. Trang chính & quản lý cá nhân
 
-| Trang chủ | Danh sách bạn bè |
-|:---:|:---:|
+|                   Trang chủ                    |                       Danh sách bạn bè                       |
+| :--------------------------------------------: | :----------------------------------------------------------: |
 | ![Trang chủ](<docs/screenshots/Trang chủ.png>) | ![Danh sách bạn bè](<docs/screenshots/Danh sách bạn bè.png>) |
 
-| Trang cá nhân | Cài đặt tài khoản |
-|:---:|:---:|
+|                     Trang cá nhân                      |             Cài đặt tài khoản              |
+| :----------------------------------------------------: | :----------------------------------------: |
 | ![Trang cá nhân](<docs/screenshots/Trang cá nhân.png>) | ![Cài đặt](<docs/screenshots/Cài đặt.png>) |
 
 ### 3. Trò chuyện thời gian thực
 
-| Danh sách hội thoại | Trò chuyện 1-1 |
-|:---:|:---:|
+|                     Danh sách hội thoại                      |                      Trò chuyện 1-1                      |
+| :----------------------------------------------------------: | :------------------------------------------------------: |
 | ![Trang trò chuyện](<docs/screenshots/Trang trò chuyện.png>) | ![Trò chuyện 1-1](<docs/screenshots/Trò chuyện 1-1.png>) |
 
 ### 4. Tính năng dịch & gợi ý câu trả lời (AI)
 
-| Cài đặt dịch | Dịch khi rê chuột vào câu | Dịch khi nháy đúp chuột |
-|:---:|:---:|:---:|
+|                     Cài đặt dịch                     |                    Dịch khi rê chuột vào câu                    |                           Dịch khi nháy đúp chuột                           |
+| :--------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------------------: |
 | ![Cài đặt dịch](<docs/screenshots/Setting dịch.png>) | ![Dịch khi di chuột](<docs/screenshots/Di chuột dịch text.png>) | ![Dịch khi nháy đúp chuột](<docs/screenshots/Nháy đúp chuột hiện dịch.png>) |
 
-| Hỗ trợ soạn câu trả lời | Dịch giọng nói thời gian thực kèm AI gợi ý |
-|:---:|:---:|
+|                     Hỗ trợ soạn câu trả lời                      |                    Dịch giọng nói thời gian thực kèm AI gợi ý                    |
+| :--------------------------------------------------------------: | :------------------------------------------------------------------------------: |
 | ![Hỗ trợ câu trả lời](<docs/screenshots/Hỗ trợ câu trả lời.png>) | ![Dịch giọng nói kèm AI gợi ý](<docs/screenshots/dịch lời nói kèm ai gợi ý.jpg>) |
-
