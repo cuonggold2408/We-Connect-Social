@@ -188,7 +188,10 @@ const ResetPasswordForm = () => {
       </form>
 
       <div className="mt-4 text-center">
-        <Link href="/login" className="text-sm text-blue-500 hover:underline">
+        <Link
+          href="/login"
+          className="flex items-center justify-center text-sm text-blue-500 hover:underline"
+        >
           <ArrowLeft className="mr-2" /> Quay lại đăng nhập
         </Link>
       </div>
