@@ -57,4 +57,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /src/generated/prisma
 /src/database/prisma/seed.ts
+/src/database/prisma/perf-seed.ts
 /setup-cors.ts

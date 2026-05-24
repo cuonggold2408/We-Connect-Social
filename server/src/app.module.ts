@@ -25,6 +25,7 @@ import { CallsModule } from '@/modules/calls/calls.module';
 import { TranslationModule } from '@/modules/translation/translation.module';
 import { SpeechModule } from '@/modules/speech/speech.module';
 import { CallAssistModule } from '@/modules/call-assist/call-assist.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CallAssistModule } from '@/modules/call-assist/call-assist.module';
       wildcard: true,
       delimiter: '.',
     }),
+    ScheduleModule.forRoot(),
     SlidingWindowThrottlerModule,
     PrismaModule,
     UsersModule,

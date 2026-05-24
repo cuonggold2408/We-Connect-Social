@@ -18,6 +18,10 @@ export const CHAT_EVENTS = {
   CONVERSATION_CREATED: 'conversation-created',
 
   AUTH_ERROR: 'auth-error',
+
+  HEARTBEAT: 'heartbeat',
+  HEARTBEAT_ACK: 'heartbeat-ack',
+  PRESENCE_SNAPSHOT: 'presence-snapshot',
 } as const;
 
 export interface SendMessagePayload {

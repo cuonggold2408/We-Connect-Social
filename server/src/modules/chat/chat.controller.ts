@@ -2,13 +2,15 @@ import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
 import { ChatService } from '@/modules/chat/chat.service';
 import { CurrentUser } from '@/shared/decorators/current-user.decorator';
 import { ChatGateway } from '@/modules/chat/chat.gateway';
-import { CHAT_EVENTS } from './constants/chat.events';
+import { CHAT_EVENTS } from '@/modules/chat/constants/chat.events';
+import { PresenceService } from '@/modules/chat/presence/presence.service';
 
 @Controller('chat')
 export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly chatGateway: ChatGateway,
+    private readonly presenceService: PresenceService,
   ) {}
 
   @Get('conversations')
@@ -56,12 +58,6 @@ export class ChatController {
   @Get('online-friends')
   async getOnlineFriends(@CurrentUser('id') userId: string) {
     const friendIds = await this.chatService.getFriendIds(userId);
-    const onlineIds: string[] = [];
-    for (const fid of friendIds) {
-      if (await this.chatService.isUserOnline(fid)) {
-        onlineIds.push(fid);
-      }
-    }
-    return onlineIds;
+    return this.presenceService.getPresenceSnapshot(friendIds);
   }
 }

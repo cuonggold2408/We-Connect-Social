@@ -108,7 +108,7 @@ export class CallAssistService implements OnModuleDestroy {
       ? this.cleanText(dto.userIntent, 300)
       : undefined;
 
-    const { suggestedReply, translatedReply } =
+    const { suggestedReply, translatedReply, llmLatencyMs } =
       await this.replyProvider.suggestReply({
         originalSentence,
         remoteLang: dto.remoteLang,
@@ -121,6 +121,7 @@ export class CallAssistService implements OnModuleDestroy {
       originalQuestion: originalSentence,
       suggestedReply,
       translatedReply,
+      llmLatencyMs,
     };
   }
 

@@ -11,6 +11,7 @@ export interface ReplySuggestionInput {
 export interface ReplySuggestionOutput {
   suggestedReply: string;
   translatedReply: string;
+  llmLatencyMs: number;
 }
 
 export interface ReplySuggestionProvider {

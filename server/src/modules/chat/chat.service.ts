@@ -4,6 +4,7 @@ import { FriendshipsRepository } from '@/modules/friendships/friendships.reposit
 import { MessageType } from '@/generated/prisma/enums';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { PresenceService } from '@/modules/chat/presence/presence.service';
 
 @Injectable()
 export class ChatService {
@@ -13,6 +14,7 @@ export class ChatService {
     private chatRepository: ChatRepository,
     private friendshipsRepository: FriendshipsRepository,
     private config: ConfigService,
+    private presenceService: PresenceService,
   ) {
     this.redis = new Redis({
       host: this.config.getOrThrow('REDIS_HOST'),
@@ -80,7 +82,6 @@ export class ChatService {
   async getConversations(userId: string) {
     const conversations =
       await this.chatRepository.findConversationsByUserId(userId);
-
     if (conversations.length === 0) return [];
 
     const conversationIds = conversations.map((c) => c.id);
@@ -89,38 +90,32 @@ export class ChatService {
       userId,
     );
 
-    const otherUserIds = conversations.map((c) => {
-      const other = c.participants.find((p) => p.userId !== userId);
-      return other!.userId;
-    });
+    const otherUserIds = conversations.map(
+      (c) => c.participants.find((p) => p.userId !== userId)!.userId,
+    );
 
-    const pipeline = this.redis.pipeline();
-    for (const id of otherUserIds) {
-      pipeline.sismember('chat:online', id);
-    }
-    const onlineResults = await pipeline.exec();
+    const [onlineSet, lastSeenMap] = await Promise.all([
+      this.presenceService.getOnlineUserIdsBulk(otherUserIds),
+      this.presenceService.getLastSeenBulk(otherUserIds),
+    ]);
 
-    return conversations.map((conv, i) => {
-      const otherParticipant = conv.participants.find(
-        (p) => p.userId !== userId,
-      );
+    return conversations.map((conv) => {
+      const other = conv.participants.find((p) => p.userId !== userId)!;
       const lastMessage = conv.messages[0] ?? null;
+      const otherId = other.userId;
 
       return {
         id: conv.id,
-        otherUser: otherParticipant!.user,
+        otherUser: other.user,
         lastMessage: lastMessage
-          ? {
-              id: lastMessage.id,
-              content: lastMessage.content,
-              type: lastMessage.type,
-              senderName: lastMessage.sender.fullname,
-              senderId: lastMessage.sender.id,
-              createdAt: lastMessage.createdAt,
-            }
+          ? { ...lastMessage, senderName: lastMessage.sender.fullname }
           : null,
         unreadCount: unreadMap.get(conv.id) ?? 0,
-        isOnline: onlineResults?.[i]?.[1] === 1,
+        isOnline: onlineSet.has(otherId),
+        lastSeen:
+          lastSeenMap.get(otherId) ??
+          other.user.lastActiveAt?.toISOString() ??
+          null,
         lastMessageAt: conv.lastMessageAt,
       };
     });

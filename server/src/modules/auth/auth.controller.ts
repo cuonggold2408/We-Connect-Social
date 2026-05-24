@@ -23,6 +23,8 @@ import { LoginThrottlerGuard } from '@/shared/guards/login-throttler.guard';
 import { ForgotPasswordDto } from '@/modules/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/modules/auth/dto/reset-password.dto';
 
+const LOGIN_LIMIT = parseInt(process.env.LOGIN_RATE_LIMIT ?? '10', 10);
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -30,9 +32,9 @@ export class AuthController {
   @Public()
   @UseGuards(LoginThrottlerGuard)
   @Throttle({
-    short: { ttl: 60000, limit: 10 },
-    medium: { ttl: 60000, limit: 10 },
-    long: { ttl: 60000, limit: 10 },
+    short: { ttl: 60000, limit: LOGIN_LIMIT },
+    medium: { ttl: 60000, limit: LOGIN_LIMIT },
+    long: { ttl: 60000, limit: LOGIN_LIMIT },
   })
   @Post('login')
   @HttpCode(HttpStatus.OK)

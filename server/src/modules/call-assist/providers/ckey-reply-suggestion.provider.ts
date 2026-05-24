@@ -81,7 +81,10 @@ export class CkeyReplySuggestionProvider implements ReplySuggestionProvider {
     return sentences.slice(0, 3).join(' ').trim();
   }
 
-  private parseOutput(raw: string): ReplySuggestionOutput {
+  private parseOutput(
+    raw: string,
+    llmLatencyMs: number,
+  ): ReplySuggestionOutput {
     const parsed = this.extractJson(raw);
 
     if (
@@ -101,6 +104,7 @@ export class CkeyReplySuggestionProvider implements ReplySuggestionProvider {
     return {
       suggestedReply,
       translatedReply,
+      llmLatencyMs,
     };
   }
 
@@ -120,6 +124,7 @@ export class CkeyReplySuggestionProvider implements ReplySuggestionProvider {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const startedAt = performance.now();
       const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -137,6 +142,8 @@ export class CkeyReplySuggestionProvider implements ReplySuggestionProvider {
         }),
       });
 
+      const llmLatencyMs = Math.round(performance.now() - startedAt);
+
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         this.logger.error(`CKEY failed: ${res.status} ${body.slice(0, 300)}`);
@@ -150,7 +157,7 @@ export class CkeyReplySuggestionProvider implements ReplySuggestionProvider {
       const raw = data.choices?.[0]?.message?.content?.trim();
       if (!raw) throw new ServiceUnavailableException('Empty LLM response');
 
-      return this.parseOutput(raw);
+      return this.parseOutput(raw, llmLatencyMs);
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         throw new ServiceUnavailableException('LLM request timed out');

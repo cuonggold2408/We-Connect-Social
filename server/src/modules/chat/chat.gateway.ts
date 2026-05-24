@@ -12,7 +12,7 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { RemoteSocket, Server, Socket } from 'socket.io';
 import Redis from 'ioredis';
 import { ChatService } from '@/modules/chat/chat.service';
 import { CHAT_EVENTS } from '@/modules/chat/constants/chat.events';
@@ -26,6 +26,7 @@ import {
 } from '@/shared/websocket/ws-auth.helper';
 import { WsRateLimiter } from '@/shared/websocket/ws-rate-limiter';
 import { SendMessageDto } from '@/modules/chat/dto/send-message.dto';
+import { PresenceService } from '@/modules/chat/presence/presence.service';
 
 @WebSocketGateway({
   cors: {
@@ -45,6 +46,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private jwtService: JwtService,
     private config: ConfigService,
     private chatService: ChatService,
+    private presenceService: PresenceService,
   ) {
     this.redis = new Redis({
       host: this.config.getOrThrow('REDIS_HOST'),
@@ -62,26 +64,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.jwtSecret,
       );
       client.data.userId = userId;
-
       await client.join(`user:${userId}`);
-      await this.chatService.setUserOnline(userId, client.id);
-
+      await this.presenceService.markOnline(userId, client.id);
       const conversationIds =
         await this.chatService.getUserConversationIds(userId);
-      for (const id of conversationIds) {
-        await client.join(`conversation:${id}`);
-      }
-
+      for (const id of conversationIds) await client.join(`conversation:${id}`);
       const friendIds = await this.chatService.getFriendIds(userId);
-      for (const friendId of friendIds) {
-        this.server
-          .to(`user:${friendId}`)
-          .emit(CHAT_EVENTS.USER_ONLINE, { userId });
-      }
-
-      this.logger.log(`Chat: User ${userId} connected (${client.id})`);
+      const snapshot =
+        await this.presenceService.getPresenceSnapshot(friendIds);
+      client.emit(CHAT_EVENTS.PRESENCE_SNAPSHOT, snapshot);
+      this.server
+        .to(friendIds.map((fid) => `user:${fid}`))
+        .emit(CHAT_EVENTS.USER_ONLINE, { userId });
     } catch {
-      this.logger.warn(`Chat: Unauthorized socket ${client.id}`);
       client.disconnect();
     }
   }
@@ -89,22 +84,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(client: Socket) {
     const userId = client.data.userId as string;
     if (!userId) return;
-
-    const isFullyOffline = await this.chatService.setUserOffline(
+    const { fullyOffline, lastSeen } = await this.presenceService.markOffline(
       userId,
       client.id,
     );
-
-    if (isFullyOffline) {
+    if (fullyOffline) {
       const friendIds = await this.chatService.getFriendIds(userId);
-      for (const friendId of friendIds) {
-        this.server
-          .to(`user:${friendId}`)
-          .emit(CHAT_EVENTS.USER_OFFLINE, { userId });
-      }
+      this.server
+        .to(friendIds.map((fid) => `user:${fid}`))
+        .emit(CHAT_EVENTS.USER_OFFLINE, {
+          userId,
+          lastSeen: lastSeen?.toISOString() ?? null,
+        });
     }
-
-    this.logger.log(`Chat: User ${userId} disconnected (${client.id})`);
   }
 
   @SubscribeMessage(CHAT_EVENTS.SEND_MESSAGE)
@@ -289,5 +281,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   sendToUser(userId: string, event: string, data: any) {
     this.server.to(`user:${userId}`).emit(event, data);
+  }
+
+  @SubscribeMessage(CHAT_EVENTS.HEARTBEAT)
+  async handleHeartbeat(@ConnectedSocket() client: Socket) {
+    const userId = client.data.userId as string;
+    if (!userId) return;
+    await this.presenceService.refreshHeartbeat(userId, client.id);
+    client.emit(CHAT_EVENTS.HEARTBEAT_ACK, { ts: Date.now() });
+  }
+  async fetchAllChatSockets(): Promise<RemoteSocket<any, any>[]> {
+    return this.server.fetchSockets();
+  }
+  async broadcastOfflineToFriends(userId: string) {
+    const friendIds = await this.chatService.getFriendIds(userId);
+    if (friendIds.length === 0) return;
+    const lastSeen = (await this.presenceService.getLastSeenBulk([userId])).get(
+      userId,
+    );
+    this.server
+      .to(friendIds.map((fid) => `user:${fid}`))
+      .emit(CHAT_EVENTS.USER_OFFLINE, { userId, lastSeen });
   }
 }
