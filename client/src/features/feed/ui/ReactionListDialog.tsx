@@ -19,6 +19,7 @@ import { cn } from "@/shared/lib/utils";
 import { useReactionList } from "@/features/feed/hooks/useReactionList";
 import type { ReactionType } from "@/features/feed/types/post";
 import { REACTION_CONFIG } from "@/features/feed/constants/config";
+import { formatCount } from "@/shared/helpers/format-count";
 
 interface ReactionStat {
   type: ReactionType;
@@ -88,38 +89,48 @@ export function ReactionListDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-md p-0">
-        <DialogHeader className="px-4 pt-2 pb-0">
-          <DialogTitle>
-            <div className="flex gap-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key ?? "ALL"}
-                  onClick={() => setActiveTab(tab.key)}
+      <DialogContent className="flex max-w-md flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="min-w-0 border-b px-2 pt-3 pr-12">
+          <DialogTitle className="sr-only">Danh sách cảm xúc</DialogTitle>
+          <div
+            role="tablist"
+            className="flex min-w-0 gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {tabs.map((tab) => (
+              <button
+                key={tab.key ?? "ALL"}
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "relative flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+                  activeTab === tab.key
+                    ? "text-blue-600"
+                    : "text-gray-500 hover:text-gray-700",
+                )}
+              >
+                <span
                   className={cn(
-                    "relative flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
-                    activeTab === tab.key
-                      ? "text-blue-600"
-                      : "text-gray-500 hover:text-gray-700",
+                    tab.key !== undefined && "text-lg leading-none",
                   )}
                 >
-                  <span className={cn(tab.key !== undefined && "text-lg")}>
-                    {tab.label}
+                  {tab.label}
+                </span>
+                {tab.key !== undefined && (
+                  <span className="text-sm tabular-nums">
+                    {formatCount(tab.count)}
                   </span>
-                  {tab.key !== undefined && (
-                    <span className="text-sm">{tab.count}</span>
-                  )}
-                  {activeTab === tab.key && (
-                    <span className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-blue-600" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </DialogTitle>
+                )}
+                {activeTab === tab.key && (
+                  <span className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-blue-600" />
+                )}
+              </button>
+            ))}
+          </div>
         </DialogHeader>
 
         {/* Reaction list */}
-        <ScrollArea className="h-90">
+        <ScrollArea className="h-90 min-w-0">
           <div className="space-y-1 px-4 pb-4">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
@@ -134,7 +145,7 @@ export function ReactionListDialog({
               : reactions.map((reaction) => (
                   <div
                     key={reaction.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
+                    className="flex min-w-0 cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
                   >
                     <div className="relative">
                       <Avatar className="size-10">
@@ -151,7 +162,7 @@ export function ReactionListDialog({
                         {REACTION_CONFIG[reaction.type].icon}
                       </span>
                     </div>
-                    <span className="text-sm font-medium">
+                    <span className="truncate text-sm font-medium">
                       {reaction.user.fullname ?? reaction.user.username}
                     </span>
                   </div>
