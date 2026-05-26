@@ -1,4 +1,4 @@
-import FriendsContent from "@/features/friends/ui/FriendsContent";
+import FriendsContent from "@/pages/friends/FriendsContent";
 import { createMetadata } from "@/shared/config/metadata";
 import { Metadata } from "next";
 

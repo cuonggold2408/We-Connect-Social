@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import PostCard from "./PostCard";
+import PostCard from "@/features/feed/ui/PostCard";
 import { Loader2 } from "lucide-react";
 import { usePostFeed } from "@/features/feed/hooks/usePostFeed";
 

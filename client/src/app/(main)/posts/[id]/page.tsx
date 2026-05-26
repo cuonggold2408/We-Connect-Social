@@ -1,4 +1,4 @@
-import PostDetail from "@/features/feed/ui/PostDetail";
+import PostDetail from "@/pages/post/PostDetail";
 import { createMetadata } from "@/shared/config/metadata";
 import { Metadata } from "next";
 

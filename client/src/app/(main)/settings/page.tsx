@@ -1,4 +1,4 @@
-import { SettingLayout } from "@/features/settings/ui/SettingLayout";
+import { SettingLayout } from "@/pages/settings/SettingLayout";
 
 export default function SettingPage() {
   return <SettingLayout />;

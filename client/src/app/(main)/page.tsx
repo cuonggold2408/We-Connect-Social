@@ -1,5 +1,5 @@
-import CreatePostBox from "@/features/feed/ui/CreatePostBox";
-import PostList from "@/features/feed/ui/PostList";
+import CreatePostBox from "@/pages/post/CreatePostBox";
+import PostList from "@/pages/post/PostList";
 
 export default function FeedPage() {
   return (

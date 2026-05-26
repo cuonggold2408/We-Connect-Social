@@ -19,7 +19,7 @@ export {
 
 export { useFriendshipSocket } from "@/features/friends/hooks/useFriendshipSocket";
 
-export { default as FriendsContent } from "@/features/friends/ui/FriendsContent";
+export { default as FriendsContent } from "@/pages/friends/FriendsContent";
 export { FriendRequestButton } from "@/features/friends/ui/FriendRequestButton";
 export { FriendRequestCard } from "@/features/friends/ui/FriendRequestCard";
 export { FriendCard } from "@/features/friends/ui/FriendCard";

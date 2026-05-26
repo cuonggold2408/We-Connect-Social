@@ -1,4 +1,4 @@
-import ProfilePage from "@/features/profile/ui/ProfilePage";
+import ProfilePage from "@/pages/profile/ProfilePage";
 
 export default function ProfileMainPage({
   params,

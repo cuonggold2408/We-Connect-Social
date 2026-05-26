@@ -13,7 +13,7 @@ import {
   ProfileFriendPreview,
   ProfilePhotoGrid,
 } from "@/features/profile";
-import CreatePostBox from "@/features/feed/ui/CreatePostBox";
+import CreatePostBox from "@/pages/post/CreatePostBox";
 
 export default function ProfilePage({
   params,

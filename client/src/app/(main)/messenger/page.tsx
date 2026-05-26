@@ -1,4 +1,4 @@
-import { MessengerLayout } from "@/features/messenger/ui/MessengerLayout";
+import { MessengerLayout } from "@/pages/messenger/MessengerLayout";
 
 export default function MessengerPage() {
   return <MessengerLayout />;
