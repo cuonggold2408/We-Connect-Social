@@ -22,6 +22,8 @@ interface ApiResponse<T> {
   data?: T;
 }
 
+const SUGGEST_REPLY_TIMEOUT_MS = 60000;
+
 export async function suggestCallReply(
   payload: SuggestCallReplyRequest,
   signal?: AbortSignal,
@@ -29,7 +31,7 @@ export async function suggestCallReply(
   const { data } = await api.post<ApiResponse<SuggestCallReplyResponse>>(
     "/call-assist/reply-suggestions",
     payload,
-    { signal },
+    { signal, timeout: SUGGEST_REPLY_TIMEOUT_MS },
   );
 
   return data.data!;

@@ -74,6 +74,7 @@ export function CallAssistPanel({
   const [interim, setInterim] = useState("");
   const [sttError, setSttError] = useState<string | null>(null);
   const lastFinalRef = useRef<{ text: string; at: number } | null>(null);
+  const interimClearTimerRef = useRef<number | null>(null);
 
   const remoteLang = activeLang.remoteLang;
   const userLang = activeLang.userLang;
@@ -215,6 +216,22 @@ export function CallAssistPanel({
       );
     },
   });
+
+  useEffect(() => {
+    if (!interim) return;
+    if (interimClearTimerRef.current) {
+      window.clearTimeout(interimClearTimerRef.current);
+    }
+    interimClearTimerRef.current = window.setTimeout(() => {
+      setInterim("");
+    }, 2500);
+    return () => {
+      if (interimClearTimerRef.current) {
+        window.clearTimeout(interimClearTimerRef.current);
+        interimClearTimerRef.current = null;
+      }
+    };
+  }, [interim]);
 
   const statusText = useMemo(() => {
     if (!pref.enabled)
