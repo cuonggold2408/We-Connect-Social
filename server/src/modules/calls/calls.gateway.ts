@@ -69,17 +69,52 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       setTimeout(() => {
         void (async () => {
-          const stillOnline = await this.chatGateway.isUserOnline(userId);
-          if (!stillOnline) {
-            await this.callsService.endCall(
+          try {
+            const sockets = await this.server
+              .in(`call:${callSessionId}`)
+              .fetchSockets();
+            const stillInCall = sockets.some(
+              (s) => (s.data as { userId?: string }).userId === userId,
+            );
+            if (stillInCall) return;
+
+            const session = await this.callsService.endCall(
               callSessionId,
               'ENDED',
               'disconnect',
             );
-            this.broadcastCallEnded(userId, callSessionId);
+            if (!session) return;
+
+            const otherUserId =
+              session.callerId === userId ? session.calleeId : session.callerId;
+
+            if ('callLogMessage' in session) {
+              this.chatGateway.sendToUser(userId, 'new-message', {
+                message: {
+                  ...session.callLogMessage,
+                  conversationId: session.conversationId,
+                },
+              });
+              this.chatGateway.sendToUser(otherUserId, 'new-message', {
+                message: {
+                  ...session.callLogMessage,
+                  conversationId: session.conversationId,
+                },
+              });
+            }
+
+            this.server.to(`user:${otherUserId}`).emit(CALL_EVENTS.CALL_ENDED, {
+              callSessionId,
+              duration: session.duration,
+              reason: 'disconnect',
+            });
+          } catch (error: any) {
+            this.logger.error(
+              `Call disconnect cleanup failed: ${error.message}`,
+            );
           }
         })();
-      }, 10_000);
+      }, 5000);
     }
 
     this.logger.log(`Call: User ${userId} disconnected (${client.id})`);
