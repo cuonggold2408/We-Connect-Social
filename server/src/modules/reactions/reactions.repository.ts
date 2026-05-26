@@ -44,7 +44,7 @@ export class ReactionsRepository {
       where: { postId, ...(type && { type }) },
       take: limit + 1,
       ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,
         type: true,
