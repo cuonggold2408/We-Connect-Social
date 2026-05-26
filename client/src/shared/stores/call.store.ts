@@ -25,6 +25,7 @@ interface CallStoreState {
   isVideoOff: boolean;
   duration: number;
   role: "caller" | "callee" | null;
+  isInitiating: boolean;
 }
 
 interface CallStoreActions {
@@ -42,6 +43,7 @@ interface CallStoreActions {
   }) => void;
   setConnecting: () => void;
   setConnected: () => void;
+  setInitiating: (v: boolean) => void;
   endCall: () => void;
   toggleMute: () => void;
   toggleVideo: () => void;
@@ -59,6 +61,7 @@ const initialState: CallStoreState = {
   isVideoOff: false,
   duration: 0,
   role: null,
+  isInitiating: false,
 };
 
 export const useCallStore = create<CallStoreState & CallStoreActions>(
@@ -74,7 +77,10 @@ export const useCallStore = create<CallStoreState & CallStoreActions>(
         isMuted: false,
         isVideoOff: false,
         duration: 0,
+        isInitiating: false,
       }),
+
+    setInitiating: (v) => set({ isInitiating: v }),
 
     setCallSessionId: (callSessionId) => set({ callSessionId }),
 

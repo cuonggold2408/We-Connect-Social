@@ -33,7 +33,26 @@ export function ChatHeader({
 }: Props) {
   const callState = useCallStore((s) => s.callState);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [forceTick, setForceTick] = useState(0);
+  const isInitiating = useCallStore((s) => s.isInitiating);
+  const setInitiating = useCallStore((s) => s.setInitiating);
+
+  const initiateCall = (type: "AUDIO" | "VIDEO") => {
+    if (callState !== "idle" || isInitiating || !callSocketRef.current) return;
+    setInitiating(true);
+    callSocketRef.current.emit("call-initiate", {
+      conversationId,
+      calleeId: otherUser.id,
+      type,
+    });
+    setTimeout(() => {
+      if (useCallStore.getState().callState === "idle") {
+        useCallStore.getState().setInitiating(false);
+      }
+    }, 5000);
+  };
+
   useEffect(() => {
     if (isOnline || !lastSeen) return;
     const id = setInterval(() => setForceTick((x) => x + 1), 60000);
@@ -41,22 +60,6 @@ export function ChatHeader({
   }, [isOnline, lastSeen]);
 
   const presence = formatPresence(isOnline, lastSeen);
-
-  const initiateCall = (type: "AUDIO" | "VIDEO") => {
-    if (callState !== "idle" || !callSocketRef.current) return;
-
-    callSocketRef.current.emit("call-initiate", {
-      conversationId,
-      calleeId: otherUser.id,
-      type,
-    });
-
-    useCallStore.getState().startOutgoingCall({
-      callType: type,
-      conversationId,
-      remoteUser: otherUser,
-    });
-  };
 
   return (
     <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
@@ -98,7 +101,7 @@ export function ChatHeader({
       <div className="flex items-center gap-1">
         <button
           onClick={() => initiateCall("AUDIO")}
-          disabled={callState !== "idle"}
+          disabled={callState !== "idle" || isInitiating}
           className="hover:text-blue-primary rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-50"
           aria-label="Gọi thoại"
         >
@@ -106,7 +109,7 @@ export function ChatHeader({
         </button>
         <button
           onClick={() => initiateCall("VIDEO")}
-          disabled={callState !== "idle"}
+          disabled={callState !== "idle" || isInitiating}
           className="hover:text-blue-primary rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-50"
           aria-label="Gọi video"
         >

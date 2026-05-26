@@ -2,6 +2,7 @@ import { useAuthStore } from "@/shared/stores/auth.store";
 import { useCallStore } from "@/shared/stores/call.store";
 import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 
 export function useCallSocket() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -20,12 +21,20 @@ export function useCallSocket() {
 
     socketRef.current = socket;
 
-    socket.on(
-      "call-initiated",
-      ({ callSession }: { callSession: { id: string } }) => {
+    socket.on("call-initiated", ({ callSession }) => {
+      const { callState, setInitiating } = useCallStore.getState();
+      setInitiating(false);
+      if (callState === "outgoing-ringing") {
         useCallStore.getState().setCallSessionId(callSession.id);
-      },
-    );
+        return;
+      }
+      useCallStore.getState().startOutgoingCall({
+        callType: callSession.type,
+        conversationId: callSession.conversationId,
+        remoteUser: callSession.callee,
+      });
+      useCallStore.getState().setCallSessionId(callSession.id);
+    });
 
     socket.on("incoming-call", ({ callSession }) => {
       const currentState = useCallStore.getState().callState;
@@ -57,10 +66,11 @@ export function useCallSocket() {
 
     socket.on("call-busy", () => {
       useCallStore.getState().reset();
+      toast.error("Người dùng đang trong cuộc gọi khác");
     });
-
     socket.on("call-timeout", () => {
       useCallStore.getState().reset();
+      toast.info("Không có phản hồi");
     });
 
     return () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConversationList } from "@/features/messenger/ui/ConversationList";
 import { ChatPanel } from "@/features/messenger/ui/ChatPanel";
 import { useChatSocket } from "@/features/messenger/hooks/useChatSocket";
@@ -17,6 +17,20 @@ export function MessengerLayout() {
   >(null);
 
   const callState = useCallStore((s) => s.callState);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      const { callSessionId, callState } = useCallStore.getState();
+      if (!callSessionId) return;
+      if (callState === "incoming-ringing") {
+        callSocketRef.current?.emit("call-reject", { callSessionId });
+      } else if (callState !== "idle" && callState !== "ended") {
+        callSocketRef.current?.emit("call-end", { callSessionId });
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, [callSocketRef]);
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
