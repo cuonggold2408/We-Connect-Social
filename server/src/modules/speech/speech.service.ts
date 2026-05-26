@@ -138,7 +138,7 @@ export class SpeechService implements OnModuleDestroy {
       accessToken: token.accessToken,
       expiresIn: token.expiresIn,
       remainingTokensToday: remaining,
-      model: 'nova-3',
+      model: 'nova-2',
       websocketUrl: this.websocketListenUrl,
     };
   }

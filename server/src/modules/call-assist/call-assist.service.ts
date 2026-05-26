@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleDestroy,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import {
 
 @Injectable()
 export class CallAssistService implements OnModuleDestroy {
+  private readonly logger = new Logger(CallAssistService.name);
   private readonly redis: Redis;
 
   constructor(
@@ -116,6 +118,10 @@ export class CallAssistService implements OnModuleDestroy {
         recentContext,
         userIntent,
       });
+
+    this.logger.debug(
+      `Reply suggested user=${userId} conv=${dto.conversationId} latency=${llmLatencyMs}ms`,
+    );
 
     return {
       originalQuestion: originalSentence,
